@@ -12703,6 +12703,13 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           <button id="start-share-btn" class="farm-action-btn" onclick="startScreenShare()">📺 开始共享屏幕</button>
           <button id="stop-share-btn" class="farm-action-btn" onclick="stopScreenShare()" style="display: none;">⏹️ 停止共享</button>
           <button id="toggle-float-btn" class="farm-action-btn" onclick="toggleFloatMode()" style="display: none;">🔲 悬浮窗模式</button>
+          <button class="farm-action-btn" onclick="testScreenShareAPI()" style="background: #ff9800;">🔍 测试API</button>
+        </div>
+        
+        <!-- 诊断信息 -->
+        <div id="diagnostic-info" style="margin-bottom: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; font-size: 12px; display: none;">
+          <div style="font-weight: bold; margin-bottom: 10px;">🔍 诊断信息：</div>
+          <div id="diagnostic-content" style="white-space: pre-wrap; font-family: monospace;"></div>
         </div>
         
         <!-- 屏幕预览区域 -->
@@ -65356,6 +65363,92 @@ SVG要求（重要：必须是像素风格）：
     function openScreenShare() {
         showScreen('screen-share-screen');
         checkScreenShareCompatibility();
+        showDiagnosticInfo();
+    }
+
+    // 显示诊断信息
+    function showDiagnosticInfo() {
+        const diagnosticDiv = document.getElementById('diagnostic-info');
+        const diagnosticContent = document.getElementById('diagnostic-content');
+        if (!diagnosticDiv || !diagnosticContent) return;
+
+        const info = [];
+        info.push('浏览器: ' + navigator.userAgent);
+        info.push('协议: ' + window.location.protocol);
+        info.push('主机: ' + window.location.hostname);
+        info.push('navigator.mediaDevices: ' + (navigator.mediaDevices ? '✅' : '❌'));
+        info.push('getDisplayMedia: ' + (navigator.mediaDevices?.getDisplayMedia ? '✅' : '❌'));
+        info.push('navigator.getDisplayMedia: ' + (navigator.getDisplayMedia ? '✅' : '❌'));
+        info.push('是否为安卓: ' + (/android/i.test(navigator.userAgent) ? '是' : '否'));
+        info.push('是否为PWA: ' + (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone ? '是' : '否'));
+        
+        diagnosticContent.textContent = info.join('\n');
+        diagnosticDiv.style.display = 'block';
+    }
+
+    // 测试屏幕共享API
+    async function testScreenShareAPI() {
+        const diagnosticContent = document.getElementById('diagnostic-content');
+        if (!diagnosticContent) return;
+
+        let testResults = [];
+        testResults.push('=== 开始测试 ===');
+        
+        // 测试1: 检查navigator.mediaDevices
+        testResults.push('\n1. 检查 navigator.mediaDevices...');
+        if (navigator.mediaDevices) {
+            testResults.push('   ✅ navigator.mediaDevices 存在');
+        } else {
+            testResults.push('   ❌ navigator.mediaDevices 不存在');
+            diagnosticContent.textContent = testResults.join('\n');
+            return;
+        }
+
+        // 测试2: 检查getDisplayMedia
+        testResults.push('\n2. 检查 getDisplayMedia...');
+        if (typeof navigator.mediaDevices.getDisplayMedia === 'function') {
+            testResults.push('   ✅ navigator.mediaDevices.getDisplayMedia 是函数');
+        } else {
+            testResults.push('   ❌ navigator.mediaDevices.getDisplayMedia 不是函数');
+            testResults.push('   类型: ' + typeof navigator.mediaDevices.getDisplayMedia);
+        }
+
+        // 测试3: 检查navigator.getDisplayMedia
+        testResults.push('\n3. 检查 navigator.getDisplayMedia...');
+        if (typeof navigator.getDisplayMedia === 'function') {
+            testResults.push('   ✅ navigator.getDisplayMedia 是函数');
+        } else {
+            testResults.push('   ❌ navigator.getDisplayMedia 不是函数');
+        }
+
+        // 测试4: 尝试调用
+        testResults.push('\n4. 尝试调用API...');
+        try {
+            const constraints = { video: true, audio: false };
+            testResults.push('   使用约束: ' + JSON.stringify(constraints));
+            
+            if (navigator.mediaDevices.getDisplayMedia) {
+                testResults.push('   调用 navigator.mediaDevices.getDisplayMedia...');
+                const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+                testResults.push('   ✅ API调用成功！');
+                testResults.push('   流对象: ' + (stream ? '存在' : '不存在'));
+                if (stream) {
+                    const tracks = stream.getTracks();
+                    testResults.push('   轨道数量: ' + tracks.length);
+                    // 立即停止测试流
+                    tracks.forEach(track => track.stop());
+                }
+            } else {
+                testResults.push('   ❌ getDisplayMedia 不可用');
+            }
+        } catch (err) {
+            testResults.push('   ❌ 调用失败: ' + err.name);
+            testResults.push('   错误信息: ' + err.message);
+            testResults.push('   错误堆栈: ' + (err.stack || '无'));
+        }
+
+        testResults.push('\n=== 测试完成 ===');
+        diagnosticContent.textContent = testResults.join('\n');
     }
 
     // 检查屏幕共享兼容性
