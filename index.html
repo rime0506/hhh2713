@@ -12728,6 +12728,7 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
         
         <!-- 提示信息 -->
         <div id="screen-share-tips" style="margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px; font-size: 14px; color: #666;">
+          <div id="browser-compatibility-check" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; display: none;"></div>
           <div style="font-weight: bold; margin-bottom: 10px;">📱 使用说明：</div>
           <div>1. 点击"开始共享屏幕"按钮</div>
           <div>2. 选择"整个屏幕"并勾选"允许在后台捕获"</div>
@@ -65034,6 +65035,12 @@ SVG要求（重要：必须是像素风格）：
     // 开始屏幕共享
     async function startScreenShare() {
         try {
+            // 检查API是否支持
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                throw new Error('您的浏览器不支持屏幕共享功能。\n\n请使用以下浏览器：\n- Chrome/Edge（推荐）\n- Firefox\n- Safari（iOS不支持）\n\n注意：需要HTTPS环境或localhost');
+            }
+
+            // 构建约束（兼容不同浏览器）
             const constraints = {
                 video: {
                     displaySurface: 'monitor', // 强制捕获整个屏幕（安卓特有）
@@ -65041,9 +65048,15 @@ SVG要求（重要：必须是像素风格）：
                     width: { ideal: 1080 },
                     height: { ideal: 1920 }
                 },
-                audio: false,
-                systemAudio: 'exclude'
+                audio: false
             };
+
+            // 某些浏览器不支持systemAudio参数
+            try {
+                constraints.systemAudio = 'exclude';
+            } catch (e) {
+                // 忽略不支持systemAudio的情况
+            }
 
             const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
             screenShareState.mediaStream = stream;
@@ -65070,11 +65083,19 @@ SVG要求（重要：必须是像素风格）：
 
         } catch (err) {
             console.error('屏幕共享失败:', err);
-            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                alert('请授予屏幕捕获权限！\n\n安卓用户：请选择"整个屏幕"并勾选"允许在后台捕获"');
+            let errorMessage = '屏幕共享失败';
+            
+            if (err.message && err.message.includes('not a function')) {
+                errorMessage = '您的浏览器不支持屏幕共享功能。\n\n请使用以下浏览器：\n- Chrome/Edge（推荐）\n- Firefox\n- Safari（iOS不支持）\n\n注意：需要HTTPS环境或localhost';
+            } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                errorMessage = '请授予屏幕捕获权限！\n\n安卓用户：请选择"整个屏幕"并勾选"允许在后台捕获"';
+            } else if (err.name === 'NotSupportedError') {
+                errorMessage = '当前环境不支持屏幕共享。\n\n请确保：\n1. 使用HTTPS访问（或localhost）\n2. 使用支持的浏览器（Chrome/Edge/Firefox）';
             } else {
-                alert('屏幕共享失败: ' + err.message);
+                errorMessage = '屏幕共享失败: ' + (err.message || err.toString());
             }
+            
+            alert(errorMessage);
         }
     }
 
@@ -65296,6 +65317,46 @@ SVG要求（重要：必须是像素风格）：
     // 打开屏幕共享页面
     function openScreenShare() {
         showScreen('screen-share-screen');
+        checkScreenShareCompatibility();
+    }
+
+    // 检查屏幕共享兼容性
+    function checkScreenShareCompatibility() {
+        const checkDiv = document.getElementById('browser-compatibility-check');
+        if (!checkDiv) return;
+
+        const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const hasGetDisplayMedia = navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function';
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg');
+        const isEdge = userAgent.includes('edg');
+        const isFirefox = userAgent.includes('firefox');
+        const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+        const isMobile = /android|iphone|ipad|ipod/i.test(userAgent);
+
+        let message = '';
+        let bgColor = '#fff3cd';
+        let textColor = '#856404';
+
+        if (!hasGetDisplayMedia) {
+            message = '❌ 您的浏览器不支持屏幕共享功能。\n\n推荐使用：\n• Chrome/Edge（最佳体验）\n• Firefox\n\n注意：iOS Safari不支持此功能';
+            bgColor = '#f8d7da';
+            textColor = '#721c24';
+        } else if (!isHTTPS && !isMobile) {
+            message = '⚠️ 屏幕共享需要HTTPS环境。\n\n当前为HTTP，某些功能可能受限。\n建议使用HTTPS访问或localhost';
+        } else if (isSafari && isMobile) {
+            message = '⚠️ iOS Safari不支持屏幕共享功能。\n\n请使用Chrome或Edge浏览器';
+        } else {
+            message = '✅ 浏览器兼容性检查通过！';
+            bgColor = '#d4edda';
+            textColor = '#155724';
+        }
+
+        checkDiv.style.display = 'block';
+        checkDiv.style.background = bgColor;
+        checkDiv.style.color = textColor;
+        checkDiv.style.whiteSpace = 'pre-line';
+        checkDiv.textContent = message;
     }
 
     // 悬浮窗输入框回车发送
