@@ -12733,6 +12733,20 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           </div>
         </div>
         
+        <!-- PWA安装提示 -->
+        <div id="pwa-install-prompt" style="margin-bottom: 15px; padding: 15px; background: #e8f5e9; border-radius: 8px; font-size: 14px; display: none;">
+          <div style="font-weight: bold; margin-bottom: 10px; color: #2e7d32;">📱 建议使用PWA模式（提升兼容性）</div>
+          <div style="margin-bottom: 10px;">PWA模式可以提升屏幕共享的兼容性和权限：</div>
+          <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px;">
+            <strong>安装步骤：</strong><br>
+            1. 点击Chrome浏览器右上角的 <strong>⋮</strong> 菜单<br>
+            2. 选择 <strong>"添加到主屏幕"</strong> 或 <strong>"安装应用"</strong><br>
+            3. 确认安装<br>
+            4. 从主屏幕图标打开应用（而不是从浏览器打开）
+          </div>
+          <button onclick="tryInstallPWA()" class="farm-action-btn" style="width: 100%; background: #4caf50;">📲 尝试安装PWA</button>
+        </div>
+        
         <!-- 提示信息 -->
         <div id="screen-share-tips" style="margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px; font-size: 14px; color: #666;">
           <div id="browser-compatibility-check" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; display: none;"></div>
@@ -65364,6 +65378,68 @@ SVG要求（重要：必须是像素风格）：
         showScreen('screen-share-screen');
         checkScreenShareCompatibility();
         showDiagnosticInfo();
+        checkPWAInstallPrompt();
+    }
+
+    // 检查并显示PWA安装提示
+    function checkPWAInstallPrompt() {
+        const pwaPrompt = document.getElementById('pwa-install-prompt');
+        if (!pwaPrompt) return;
+
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        const isAndroid = /android/i.test(navigator.userAgent);
+        
+        // 如果不是PWA模式且是安卓，显示安装提示
+        if (!isStandalone && isAndroid) {
+            pwaPrompt.style.display = 'block';
+        } else {
+            pwaPrompt.style.display = 'none';
+        }
+    }
+
+    // 尝试安装PWA
+    let deferredPrompt = null;
+
+    // 监听beforeinstallprompt事件
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+    });
+
+    function tryInstallPWA() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    alert('PWA安装成功！请从主屏幕图标打开应用。');
+                } else {
+                    alert('PWA安装已取消。');
+                }
+                deferredPrompt = null;
+            });
+        } else {
+            // 如果没有beforeinstallprompt事件，提供手动安装说明
+            const isChrome = /chrome/i.test(navigator.userAgent);
+            let instructions = '';
+            
+            if (isChrome) {
+                instructions = '手动安装步骤：\n\n' +
+                    '1. 点击浏览器右上角的 ⋮ 菜单\n' +
+                    '2. 找到"添加到主屏幕"或"安装应用"选项\n' +
+                    '3. 点击安装\n' +
+                    '4. 从主屏幕图标打开应用\n\n' +
+                    '注意：如果找不到该选项，可能需要：\n' +
+                    '- 使用HTTPS访问\n' +
+                    '- 确保manifest.json配置正确';
+            } else {
+                instructions = '请使用Chrome浏览器，然后：\n\n' +
+                    '1. 点击浏览器菜单\n' +
+                    '2. 选择"添加到主屏幕"\n' +
+                    '3. 从主屏幕图标打开应用';
+            }
+            
+            alert(instructions);
+        }
     }
 
     // 显示诊断信息
