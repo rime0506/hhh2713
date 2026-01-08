@@ -65036,29 +65036,58 @@ SVG要求（重要：必须是像素风格）：
     async function startScreenShare() {
         try {
             // 检查API是否支持
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                throw new Error('您的浏览器不支持屏幕共享功能。\n\n请使用以下浏览器：\n- Chrome/Edge（推荐）\n- Firefox\n- Safari（iOS不支持）\n\n注意：需要HTTPS环境或localhost');
+            if (!navigator.mediaDevices) {
+                throw new Error('navigator.mediaDevices 不可用。请确保使用HTTPS或localhost访问。');
             }
 
-            // 构建约束（兼容不同浏览器）
-            const constraints = {
-                video: {
-                    displaySurface: 'monitor', // 强制捕获整个屏幕（安卓特有）
-                    logicalSurface: true,
-                    width: { ideal: 1080 },
-                    height: { ideal: 1920 }
-                },
+            // 安卓Chrome可能需要先请求权限
+            if (navigator.mediaDevices.getDisplayMedia) {
+                // 标准API可用
+            } else if (navigator.getDisplayMedia) {
+                // 某些旧版本可能在这里
+                navigator.mediaDevices.getDisplayMedia = navigator.getDisplayMedia;
+            } else {
+                throw new Error('getDisplayMedia API不可用。\n\n请确保：\n1. 使用Chrome/Edge最新版\n2. 使用HTTPS或localhost\n3. 安卓需要授予"显示在其他应用上层"权限');
+            }
+
+            // 检测是否为安卓
+            const isAndroid = /android/i.test(navigator.userAgent);
+            
+            // 安卓Chrome使用最简单的配置（兼容性最好）
+            let constraints = {
+                video: true, // 使用最简单的配置，让浏览器自己选择
                 audio: false
             };
 
-            // 某些浏览器不支持systemAudio参数
-            try {
-                constraints.systemAudio = 'exclude';
-            } catch (e) {
-                // 忽略不支持systemAudio的情况
+            // 如果不是安卓，可以添加更多选项
+            if (!isAndroid) {
+                try {
+                    constraints.video = {
+                        displaySurface: 'monitor',
+                        logicalSurface: true,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    };
+                } catch (e) {
+                    // 如果设置失败，回退到简单配置
+                    constraints.video = true;
+                }
             }
 
-            const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+            console.log('开始请求屏幕共享，约束:', constraints);
+            console.log('浏览器信息:', navigator.userAgent);
+            console.log('是否为安卓:', isAndroid);
+            
+            // 尝试调用API
+            let stream;
+            if (navigator.mediaDevices.getDisplayMedia) {
+                stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+            } else if (navigator.getDisplayMedia) {
+                // 兼容旧版本
+                stream = await navigator.getDisplayMedia(constraints);
+            } else {
+                throw new Error('getDisplayMedia API不可用');
+            }
             screenShareState.mediaStream = stream;
 
             const video = document.getElementById('screen-preview-video');
@@ -65076,23 +65105,32 @@ SVG要求（重要：必须是像素风格）：
             if (tips) tips.style.display = 'none';
 
             // 监听屏幕共享停止事件
-            stream.getVideoTracks()[0].addEventListener('ended', () => {
-                stopScreenShare();
-                alert('屏幕共享已停止');
-            });
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.addEventListener('ended', () => {
+                    stopScreenShare();
+                    alert('屏幕共享已停止');
+                });
+                
+                // 安卓特殊处理：监听设置变化
+                if (isAndroid && videoTrack.getSettings) {
+                    const settings = videoTrack.getSettings();
+                    console.log('屏幕共享设置:', settings);
+                }
+            }
 
         } catch (err) {
             console.error('屏幕共享失败:', err);
             let errorMessage = '屏幕共享失败';
             
-            if (err.message && err.message.includes('not a function')) {
-                errorMessage = '您的浏览器不支持屏幕共享功能。\n\n请使用以下浏览器：\n- Chrome/Edge（推荐）\n- Firefox\n- Safari（iOS不支持）\n\n注意：需要HTTPS环境或localhost';
+            if (err.message && (err.message.includes('not a function') || err.message.includes('getDisplayMedia'))) {
+                errorMessage = 'API不可用。\n\n安卓Chrome用户：\n1. 确保Chrome是最新版本\n2. 在Chrome设置中授予"显示在其他应用上层"权限\n3. 尝试使用PWA模式（添加到主屏幕）\n\n或使用HTTPS访问';
             } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                errorMessage = '请授予屏幕捕获权限！\n\n安卓用户：请选择"整个屏幕"并勾选"允许在后台捕获"';
-            } else if (err.name === 'NotSupportedError') {
-                errorMessage = '当前环境不支持屏幕共享。\n\n请确保：\n1. 使用HTTPS访问（或localhost）\n2. 使用支持的浏览器（Chrome/Edge/Firefox）';
+                errorMessage = '请授予屏幕捕获权限！\n\n安卓用户：\n1. 选择"整个屏幕"\n2. 勾选"允许在后台捕获"\n3. 在系统设置中授予悬浮窗权限';
+            } else if (err.name === 'NotSupportedError' || err.name === 'NotReadableError') {
+                errorMessage = '当前环境不支持屏幕共享。\n\n安卓用户：\n1. 确保使用HTTPS或localhost\n2. 尝试使用PWA模式\n3. 检查Chrome版本（需Chrome 72+）';
             } else {
-                errorMessage = '屏幕共享失败: ' + (err.message || err.toString());
+                errorMessage = '屏幕共享失败: ' + (err.message || err.toString()) + '\n\n如果是安卓，请尝试：\n1. 使用PWA模式（添加到主屏幕）\n2. 授予所有相关权限\n3. 重启浏览器';
             }
             
             alert(errorMessage);
@@ -65326,26 +65364,44 @@ SVG要求（重要：必须是像素风格）：
         if (!checkDiv) return;
 
         const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const hasGetDisplayMedia = navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function';
+        const hasMediaDevices = !!navigator.mediaDevices;
+        const hasGetDisplayMedia = hasMediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function';
+        const hasLegacyGetDisplayMedia = typeof navigator.getDisplayMedia === 'function';
         const userAgent = navigator.userAgent.toLowerCase();
         const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg');
         const isEdge = userAgent.includes('edg');
         const isFirefox = userAgent.includes('firefox');
         const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+        const isAndroid = /android/i.test(navigator.userAgent);
         const isMobile = /android|iphone|ipad|ipod/i.test(userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
         let message = '';
         let bgColor = '#fff3cd';
         let textColor = '#856404';
 
-        if (!hasGetDisplayMedia) {
-            message = '❌ 您的浏览器不支持屏幕共享功能。\n\n推荐使用：\n• Chrome/Edge（最佳体验）\n• Firefox\n\n注意：iOS Safari不支持此功能';
+        if (!hasMediaDevices) {
+            message = '❌ navigator.mediaDevices 不可用\n\n请使用HTTPS或localhost访问';
+            bgColor = '#f8d7da';
+            textColor = '#721c24';
+        } else if (!hasGetDisplayMedia && !hasLegacyGetDisplayMedia) {
+            message = '❌ getDisplayMedia API不可用\n\n' + 
+                     (isAndroid ? '安卓用户：\n1. 确保Chrome是最新版本（72+）\n2. 尝试使用PWA模式（添加到主屏幕）\n3. 检查是否授予了所有权限' : 
+                      '请使用Chrome/Edge/Firefox最新版');
             bgColor = '#f8d7da';
             textColor = '#721c24';
         } else if (!isHTTPS && !isMobile) {
-            message = '⚠️ 屏幕共享需要HTTPS环境。\n\n当前为HTTP，某些功能可能受限。\n建议使用HTTPS访问或localhost';
+            message = '⚠️ 屏幕共享需要HTTPS环境\n\n当前为HTTP，某些功能可能受限\n建议使用HTTPS访问或localhost';
         } else if (isSafari && isMobile) {
-            message = '⚠️ iOS Safari不支持屏幕共享功能。\n\n请使用Chrome或Edge浏览器';
+            message = '⚠️ iOS Safari不支持屏幕共享功能\n\n请使用Chrome或Edge浏览器';
+        } else if (isAndroid) {
+            if (isStandalone) {
+                message = '✅ PWA模式已启用，兼容性最佳！\n\n建议：\n1. 授予"显示在其他应用上层"权限\n2. 选择"整个屏幕"并勾选"允许在后台捕获"';
+            } else {
+                message = '✅ 浏览器支持屏幕共享\n\n💡 建议：\n1. 使用PWA模式（菜单→添加到主屏幕）\n2. 授予所有相关权限\n3. 选择"整个屏幕"并勾选"允许在后台捕获"';
+            }
+            bgColor = '#d4edda';
+            textColor = '#155724';
         } else {
             message = '✅ 浏览器兼容性检查通过！';
             bgColor = '#d4edda';
