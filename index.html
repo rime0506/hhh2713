@@ -4693,6 +4693,7 @@
             overflow-y: auto;
         }
         .movie-card {
+            position: relative;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             border-radius: 8px;
@@ -4719,6 +4720,23 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .movie-platform-tag {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 2;
+        }
+        .movie-platform-tag.bilibili {
+            background-color: #00a1d6;
+        }
+        .movie-platform-tag.yinghua {
+            background-color: #ff8eb3;
+        }
         .movie-player-container {
             display: none;
             position: relative;
@@ -4739,6 +4757,60 @@
             border-radius: 12px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
             background-color: #000;
+        }
+        .movie-video {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border: none;
+            display: none;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            background-color: #000;
+            /* 禁用全屏功能 */
+            pointer-events: auto;
+        }
+        .movie-video.active {
+            display: block;
+        }
+        /* 禁用视频控制栏的全屏按钮 */
+        .movie-video::-webkit-media-controls-fullscreen-button {
+            display: none !important;
+        }
+        .movie-video::--webkit-media-controls-fullscreen-button {
+            display: none !important;
+        }
+        /* AI陪看聊天样式 */
+        #ai-watch-chat {
+            display: flex;
+        }
+        #ai-watch-chat.active {
+            display: flex;
+        }
+        .ai-chat-message {
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        .ai-chat-message.ai {
+            background-color: #e7f3ff;
+            color: #1a73e8;
+            margin-right: 20px;
+        }
+        .ai-chat-message.user {
+            background-color: #f0f0f0;
+            color: #333;
+            margin-left: 20px;
+            text-align: right;
+        }
+        .ai-chat-message.system {
+            background-color: #fff3cd;
+            color: #856404;
+            text-align: center;
+            font-size: 12px;
+            padding: 6px 12px;
         }
         .close-player-btn {
             position: absolute;
@@ -11754,6 +11826,30 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           <button id="movie-search-btn" class="movie-search-btn">搜索</button>
         </div>
         
+        <!-- AI陪看角色选择（在上传视频之前） -->
+        <div id="ai-character-selector" style="margin-top: 15px; padding: 15px; background-color: rgba(255,255,255,0.95); border-radius: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <label style="font-size: 14px; color: #666; flex-shrink: 0; font-weight: 600;">🤖 选择AI陪看角色：</label>
+            <select id="ai-watch-character" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+              <option value="">加载中...</option>
+            </select>
+          </div>
+          <div id="character-description" style="font-size: 12px; color: #999; padding: 8px; background-color: #f5f5f5; border-radius: 6px; margin-top: 8px; display: none;">
+            <!-- 角色描述将显示在这里 -->
+          </div>
+          <!-- 视觉调用间隔配置 -->
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <label style="font-size: 13px; color: #666; flex-shrink: 0; font-weight: 600;">📸 视觉调用最小间隔：</label>
+              <input type="number" id="visual-interval-input" min="60" max="600" value="180" step="30" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+              <span style="font-size: 12px; color: #999;">秒</span>
+            </div>
+            <div style="font-size: 11px; color: #999; padding-left: 0;">
+              💡 视觉调用仅在满足时间间隔且触发条件时进行（暂停、提及画面、剧情转折）
+            </div>
+          </div>
+        </div>
+        
         <!-- 自定义播放区域 -->
         <div class="movie-search-box" style="margin-top: 10px;">
           <input type="text" id="custom-movie-url" class="movie-search-input" placeholder="输入视频链接直接播放...">
@@ -11773,6 +11869,27 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           <a href="https://v.qq.com" target="_blank" rel="noopener">前往登录</a>
         </div>
         <iframe id="movie-iframe" class="movie-iframe" allow="autoplay; fullscreen; clipboard-read; clipboard-write" webkitallowfullscreen mozallowfullscreen allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <video id="movie-video" class="movie-video" controls playsinline webkit-playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback"></video>
+        
+        <!-- AI陪看控制区域 -->
+        <div id="ai-watch-controls" style="padding: 15px; background-color: rgba(255,255,255,0.95); border-radius: 12px; margin-top: 15px;">
+          <button id="ai-watch-btn" style="width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">🤖 开始AI陪看</button>
+        </div>
+        
+        <!-- AI聊天窗口 -->
+        <div id="ai-watch-chat" style="display: flex; margin-top: 15px; background-color: rgba(255,255,255,0.95); border-radius: 12px; padding: 15px; max-height: 300px; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+            <span style="font-size: 16px; font-weight: 600;">AI陪看聊天</span>
+            <button id="close-ai-chat-btn" style="background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0; width: 24px; height: 24px;">×</button>
+          </div>
+          <div id="ai-chat-messages" style="flex: 1; overflow-y: auto; min-height: 200px; max-height: 250px; padding: 10px 0;">
+            <!-- 聊天消息将动态插入这里 -->
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+            <input type="text" id="ai-chat-input" placeholder="和AI聊聊剧情..." style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+            <button id="ai-chat-send-btn" style="padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">发送</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="tutorial-screen" class="screen">
@@ -17438,6 +17555,23 @@ window.db = db;
                         document.getElementById('font-url-input').value = state.globalSettings.fontUrl || '';
                         applyCustomFont(state.globalSettings.fontUrl || '', true);
                     }
+                    
+                    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 核心修复代码开始 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+                    // 当切换到观影室时，强制刷新角色列表
+                    if (screenId === 'movie-screen') {
+                        console.log("进入观影室，正在刷新角色列表...");
+                        setTimeout(() => {
+                            if (typeof window.loadCharacterList === 'function') {
+                                window.loadCharacterList(); // 调用观影室模块暴露出来的加载函数
+                            } else {
+                                console.warn("未找到 loadCharacterList 函数，尝试再次延迟加载");
+                                setTimeout(() => {
+                                     if (typeof window.loadCharacterList === 'function') window.loadCharacterList();
+                                }, 500);
+                            }
+                        }, 100); // 稍微延迟以确保数据已就绪
+                    }
+                    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 核心修复代码结束 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
                 }
                 window.updateListenTogetherIconProxy = () => {};
         
@@ -69305,6 +69439,7 @@ SVG要求（重要：必须是像素风格）：
                     updateNotificationButton();
                 }, 100);
             }
+            // 注意：movie-screen的刷新逻辑已经在原始showScreen函数中处理，这里不需要重复
         };
     }
     
@@ -70035,6 +70170,7 @@ SVG要求（重要：必须是像素风格）：
             const resultsContainer = document.getElementById('movie-results');
             const playerContainer = document.getElementById('movie-player-container');
             const movieIframe = document.getElementById('movie-iframe');
+            const movieVideo = document.getElementById('movie-video');
             const closePlayerBtn = document.getElementById('close-player-btn');
             
             // 新增：自定义播放控件
@@ -70043,13 +70179,84 @@ SVG要求（重要：必须是像素风格）：
             const fileInput = document.getElementById('custom-movie-file');
             const uploadBtn = document.getElementById('upload-movie-btn');
 
-            // 本地影视数据（备用，已添加 vid）
+            // 本地影视数据（B站演示视频，作为兜底）
             const localMoviesData = [
-                { title: "狂飙", pic: "https://img1.doubanio.com/view/photo/s_ratio_poster/public/p2888115360.jpg", vid: "u0045u0099m", url: "https://www.iqiyi.com/v_19rr7q1x0k.html" },
-                { title: "流浪地球2", pic: "https://img1.doubanio.com/view/photo/s_ratio_poster/public/p2888115360.jpg", vid: "m0046sz646h", url: "https://www.iqiyi.com/v_19rr7q1x0k.html" },
-                { title: "三体", pic: "https://img1.doubanio.com/view/photo/s_ratio_poster/public/p2888115360.jpg", vid: "a0046l66ixg", url: "https://www.iqiyi.com/v_19rr7q1x0k.html" },
-                { title: "满江红", pic: "https://img1.doubanio.com/view/photo/s_ratio_poster/public/p2888115360.jpg", vid: "j0046j85k9a", url: "https://www.iqiyi.com/v_19rr7q1x0k.html" }
+                { 
+                    title: "【B站】Rick and Morty S1", 
+                    pic: "https://i0.hdslb.com/bfs/archive/a43c6838384234567.jpg", 
+                    platform: "bilibili", 
+                    sourceId: "BV1GJ411x7h7" 
+                },
+                { 
+                    title: "【B站】演示视频", 
+                    pic: "https://i0.hdslb.com/bfs/archive/a43c6838384234567.jpg", 
+                    platform: "bilibili", 
+                    sourceId: "BV1b24y197V3" 
+                }
             ];
+
+            // B站搜索API调用（带超时处理）
+            async function searchBilibiliAPI(keyword) {
+                const API_URL = `https://api.bilibili.com/x/web-interface/search/type?keyword=${encodeURIComponent(keyword)}&search_type=video&page=1&pagesize=20`;
+                const TIMEOUT = 5000; // 5秒超时
+                
+                try {
+                    // 创建超时Promise
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('请求超时')), TIMEOUT);
+                    });
+                    
+                    // 创建请求Promise
+                    const fetchPromise = fetch(API_URL, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15'
+                        },
+                        mode: 'cors'
+                    });
+                    
+                    // 使用Promise.race实现超时
+                    const response = await Promise.race([fetchPromise, timeoutPromise]);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // 解析B站API返回数据
+                    // B站API返回格式: { code: 0, data: { result: [...] } }
+                    if (data.code === 0 && data.data && data.data.result) {
+                        const videos = data.data.result;
+                        
+                        // 转换为统一格式
+                        const movies = videos.map(video => {
+                            // 处理标题：移除HTML标签
+                            let title = video.title || '';
+                            if (title) {
+                                title = title.replace(/<[^>]*>/g, '').trim();
+                            }
+                            
+                            return {
+                                title: title || '未知标题',
+                                pic: video.pic || '',
+                                platform: 'bilibili',
+                                sourceId: video.bvid || ''
+                            };
+                        }).filter(movie => movie.sourceId && movie.sourceId.startsWith('BV')); // 过滤有效BV号
+                        
+                        if (movies.length > 0) {
+                            return movies;
+                        }
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.log('B站API请求失败:', error.message || error);
+                    return null;
+                }
+            }
 
             // 渲染电影卡片
             function renderMovieCards(movies) {
@@ -70063,17 +70270,36 @@ SVG要求（重要：必须是像素风格）：
                 movies.forEach(movie => {
                     const card = document.createElement('div');
                     card.className = 'movie-card';
+                    
+                    // 平台标签逻辑
+                    let platformTag = '';
+                    if (movie.platform === 'bilibili') {
+                        platformTag = '<span class="movie-platform-tag bilibili">B站</span>';
+                    } else if (movie.platform === 'yinghua') {
+                        platformTag = '<span class="movie-platform-tag yinghua">樱花</span>';
+                    }
+
+                    // 图片处理
+                    const imgSrc = movie.pic || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'180\'%3E%3Crect fill=\'%23ddd\' width=\'120\' height=\'180\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E无海报%3C/text%3E%3C/svg%3E';
+
                     card.innerHTML = `
-                        <img src="${movie.pic}" alt="${movie.title || ''}" class="movie-poster" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'180\'%3E%3Crect fill=\'%23ddd\' width=\'120\' height=\'180\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E无海报%3C/text%3E%3C/svg%3E'">
+                        <div style="position: relative;">
+                            <img src="${imgSrc}" alt="${movie.title || ''}" class="movie-poster" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'180\'%3E%3Crect fill=\'%23ddd\' width=\'120\' height=\'180\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E无海报%3C/text%3E%3C/svg%3E'">
+                            ${platformTag}
+                        </div>
                         <div class="movie-title">${movie.title || '未知标题'}</div>
                     `;
                     
                     // 点击卡片播放
                     card.addEventListener('click', function() {
-                        if (movie.vid) {
-                            playTencentVideo(movie.vid);
+                        if (movie.platform === 'bilibili' && movie.sourceId) {
+                            playBilibili(movie.sourceId);
+                        } else if (movie.platform === 'yinghua' && movie.sourceId) {
+                            playYinghua(movie.sourceId);
                         } else if (movie.url) {
                             playMovie(movie.url);
+                        } else if (movie.vid) {
+                             alert('该资源格式不再支持');
                         }
                     });
                     
@@ -70122,7 +70348,7 @@ SVG要求（重要：必须是像素风格）：
                 return null;
             }
 
-            // 搜索函数
+            // 搜索函数（优先使用B站API）
             async function searchMovies(keyword) {
                 if (!keyword || keyword.trim() === '') {
                     return;
@@ -70133,24 +70359,29 @@ SVG要求（重要：必须是像素风格）：
                 // 显示搜索中
                 resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">搜索中...</div>';
 
-                // 尝试多个接口
-                const apiUrls = [
-                    `https://api.sosout.com/api/douban?type=search&keyword=${encodeURIComponent(searchKeyword)}`,
-                    `https://frodo.douban.com/api/v2/search/movie?q=${encodeURIComponent(searchKeyword)}&count=20`,
-                    `https://api.douban.com/v2/movie/search?q=${encodeURIComponent(searchKeyword)}&count=20`
-                ];
-
                 let foundMovies = null;
                 
-                // 依次尝试每个接口
-                for (const apiUrl of apiUrls) {
-                    foundMovies = await trySearchAPI(searchKeyword, apiUrl);
-                    if (foundMovies && foundMovies.length > 0) {
-                        break;
+                // 优先调用B站搜索API
+                foundMovies = await searchBilibiliAPI(searchKeyword);
+                
+                // 如果B站API失败，尝试其他接口（保留原有逻辑作为备用）
+                if (!foundMovies || foundMovies.length === 0) {
+                    const apiUrls = [
+                        `https://api.sosout.com/api/douban?type=search&keyword=${encodeURIComponent(searchKeyword)}`,
+                        `https://frodo.douban.com/api/v2/search/movie?q=${encodeURIComponent(searchKeyword)}&count=20`,
+                        `https://api.douban.com/v2/movie/search?q=${encodeURIComponent(searchKeyword)}&count=20`
+                    ];
+                    
+                    // 依次尝试每个接口
+                    for (const apiUrl of apiUrls) {
+                        foundMovies = await trySearchAPI(searchKeyword, apiUrl);
+                        if (foundMovies && foundMovies.length > 0) {
+                            break;
+                        }
                     }
                 }
 
-                // 如果所有接口都失败，使用本地数据（模糊匹配）
+                // 如果所有接口都失败，使用本地预设数据（兜底机制）
                 if (!foundMovies || foundMovies.length === 0) {
                     const matchedLocal = localMoviesData.filter(movie => 
                         movie.title.toLowerCase().includes(searchKeyword.toLowerCase())
@@ -70158,7 +70389,7 @@ SVG要求（重要：必须是像素风格）：
                     if (matchedLocal.length > 0) {
                         foundMovies = matchedLocal;
                     } else {
-                        // 显示本地数据作为示例
+                        // 显示本地预设数据作为示例
                         foundMovies = localMoviesData;
                     }
                 }
@@ -70167,20 +70398,18 @@ SVG要求（重要：必须是像素风格）：
                 renderMovieCards(foundMovies);
             }
 
-            // 播放腾讯视频（支持登录态共享）
-            function playTencentVideo(vid) {
-                if (!vid) return;
-                // 使用腾讯视频官方 iframe 播放器，支持 Cookie 登录态共享
-                // 参数说明：
-                // - vid: 视频ID
-                // - tiny=0: 完整播放器
-                // - auto=0: 不自动播放（避免浏览器限制）
-                // - show1080p=1: 显示1080p选项
-                const url = `https://v.qq.com/iframe/player.html?vid=${vid}&tiny=0&auto=0&show1080p=1`;
+            // 播放 B站视频
+            function playBilibili(bvid) {
+                // https://player.bilibili.com/player.html?bvid=xxx&page=1&high_quality=1
+                const url = `https://player.bilibili.com/player.html?bvid=${bvid}&page=1&high_quality=1&danmaku=0`;
                 playMovie(url);
-                
-                // 提示用户如果需要观看会员内容，请先登录
-                console.log('提示：如需观看会员内容，请先访问 https://v.qq.com 登录您的账号，登录后刷新页面即可。');
+            }
+
+            // 播放 樱花动漫
+            function playYinghua(videoId) {
+                // https://www.yhdm.so/player/${videoId}.html
+                const url = `https://www.yhdm.so/player/${videoId}.html`;
+                playMovie(url);
             }
 
             // 播放通用视频
@@ -70189,11 +70418,34 @@ SVG要求（重要：必须是像素风格）：
                     return;
                 }
                 
-                // 设置 iframe src
-                movieIframe.src = url;
+                // 隐藏旧版腾讯视频登录提示
+                const loginHint = document.getElementById('login-hint');
+                if (loginHint) loginHint.style.display = 'none';
+                
+                // 判断URL类型：blob URL（本地文件）使用video标签，其他使用iframe
+                const isBlobUrl = url.startsWith('blob:');
+                
+                if (isBlobUrl) {
+                    // 本地视频文件：使用video标签
+                    movieIframe.style.display = 'none';
+                    movieVideo.src = url;
+                    movieVideo.classList.add('active');
+                } else {
+                    // 在线视频：使用iframe
+                    movieVideo.classList.remove('active');
+                    movieVideo.src = '';
+                    movieIframe.style.display = 'block';
+                    movieIframe.src = url;
+                }
                 
                 // 显示播放器
                 playerContainer.classList.add('active');
+                
+                // 显示聊天框（如果有视频播放）
+                const aiWatchChat = document.getElementById('ai-watch-chat');
+                if (aiWatchChat && (movieVideo.src || movieIframe.src)) {
+                    aiWatchChat.style.display = 'flex';
+                }
                 
                 // 滚动到播放器位置
                 playerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -70203,8 +70455,46 @@ SVG要求（重要：必须是像素风格）：
             function closePlayer() {
                 playerContainer.classList.remove('active');
                 movieIframe.src = '';
+                movieVideo.src = '';
+                movieVideo.classList.remove('active');
+                movieIframe.style.display = 'block';
             }
 
+            // 禁用视频全屏功能
+            if (movieVideo) {
+                // 阻止双击全屏
+                movieVideo.addEventListener('dblclick', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                });
+                
+                // 阻止右键菜单中的全屏选项
+                movieVideo.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // 监听全屏请求并阻止
+                movieVideo.addEventListener('webkitbeginfullscreen', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                movieVideo.addEventListener('webkitendfullscreen', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // 监听视频加载完成，确保聊天框显示
+                movieVideo.addEventListener('loadeddata', function() {
+                    const aiWatchChat = document.getElementById('ai-watch-chat');
+                    if (aiWatchChat && movieVideo.src) {
+                        aiWatchChat.style.display = 'flex';
+                    }
+                });
+            }
+            
             // 绑定事件
             searchBtn.addEventListener('click', function() {
                 searchMovies(searchInput.value);
@@ -70246,6 +70536,958 @@ SVG要求（重要：必须是像素风格）：
                         fileInput.value = '';
                     }
                 });
+            }
+        })();
+
+        // AI陪看视频功能
+        (function() {
+            const aiWatchBtn = document.getElementById('ai-watch-btn');
+            const aiWatchCharacter = document.getElementById('ai-watch-character');
+            const aiWatchChat = document.getElementById('ai-watch-chat');
+            const aiChatMessages = document.getElementById('ai-chat-messages');
+            const aiChatInput = document.getElementById('ai-chat-input');
+            const aiChatSendBtn = document.getElementById('ai-chat-send-btn');
+            const closeAiChatBtn = document.getElementById('close-ai-chat-btn');
+            const movieIframe = document.getElementById('movie-iframe');
+            const movieVideo = document.getElementById('movie-video');
+            
+            let isWatching = false;
+            let watchInterval = null;
+            let currentVideoTitle = '当前视频';
+            let currentCharacter = 'friendly';
+
+            // 真实角色列表（可从API获取，这里使用预设数据）
+            let characterProfiles = {};
+            let characterList = [];
+            
+            // 视觉调用间隔系统
+            let visualInterval = 180; // 默认3分钟（秒）
+            let lastVisualCallTime = 0; // 上次视觉调用时间戳
+            let frameCache = []; // 截图缓存数组，最多保存最近30帧
+            let lastPauseTime = 0; // 上次暂停时间
+            let isPaused = false; // 是否暂停
+            let lastUserMessageTime = 0; // 上次用户消息时间
+            let lastUserMessageText = ''; // 上次用户消息内容
+            let videoPlayTime = 0; // 视频播放时间（用于检测剧情转折）
+
+            // 从聊天页面的角色库加载角色列表
+            async function loadCharacterList() {
+                try {
+                    // 等待state对象加载完成
+                    let maxRetries = 10;
+                    let retryCount = 0;
+                    while ((typeof window === 'undefined' || !window.state || !window.state.chats) && retryCount < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        retryCount++;
+                    }
+
+                    // 从state.chats中读取角色（排除群聊）
+                    const chats = (window.state && window.state.chats) || {};
+                    const characterChats = Object.values(chats).filter(chat => !chat.isGroup);
+                    
+                    if (characterChats.length === 0) {
+                        console.log('聊天页面没有创建角色，使用默认角色');
+                        loadDefaultCharacters();
+                        return;
+                    }
+
+                    // 转换为characterList格式
+                    characterList = characterChats.map((chat, index) => {
+                        // 使用角色的name或originalName
+                        const name = chat.name || chat.originalName || `角色${index + 1}`;
+                        
+                        // 获取角色人设（优先使用settings.aiPersona，如果没有则使用空字符串）
+                        const persona = (chat.settings && chat.settings.aiPersona) || '';
+                        
+                        // 生成描述（从人设中提取前60个字符，如果没有人设则使用角色名称）
+                        const description = persona 
+                            ? (persona.length > 60 ? persona.substring(0, 60) + '...' : persona)
+                            : `${name}（来自聊天页面）`;
+                        
+                        // 构建系统提示词（用于AI对话）
+                        const systemPrompt = persona 
+                            ? `${persona}\n\n你正在和用户一起观看视频，请根据你的人设和当前视频内容，用符合你性格的方式与用户互动。`
+                            : `你是${name}，正在和用户一起观看视频，请根据你的性格和当前视频内容，用符合你性格的方式与用户互动。`;
+                        
+                        // 获取头像（如果有）
+                        const avatar = (chat.settings && chat.settings.aiAvatar) 
+                            ? (chat.settings.aiAvatar.startsWith('data:') || chat.settings.aiAvatar.startsWith('http') 
+                                ? '🖼️' : chat.settings.aiAvatar) 
+                            : '🤖';
+                        
+                        return {
+                            id: chat.id || `chat_${index}`,
+                            name: name,
+                            avatar: avatar,
+                            description: description,
+                            systemPrompt: systemPrompt,
+                            chatId: chat.id // 保存原始chatId以便后续使用
+                        };
+                    });
+
+                    // 转换为characterProfiles格式
+                    characterProfiles = {};
+                    characterList.forEach(char => {
+                        characterProfiles[char.id] = {
+                            name: char.name,
+                            avatar: char.avatar,
+                            description: char.description,
+                            systemPrompt: char.systemPrompt,
+                            chatId: char.chatId
+                        };
+                    });
+
+                    // 更新角色选择下拉框
+                    updateCharacterSelector();
+                    
+                    console.log(`成功加载 ${characterList.length} 个角色（来自聊天页面）`);
+                } catch (error) {
+                    console.error('加载角色列表失败:', error);
+                    // 使用默认角色
+                    loadDefaultCharacters();
+                }
+            }
+            
+            // 将loadCharacterList暴露到window对象，以便外部调用
+            window.loadCharacterList = loadCharacterList;
+
+            // 加载默认角色（兜底）
+            function loadDefaultCharacters() {
+                characterList = [
+                    {
+                        id: 'default',
+                        name: '默认助手',
+                        avatar: '🤖',
+                        description: '通用AI助手',
+                        systemPrompt: '你是一个友好的AI助手，喜欢和用户一起观看视频并互动。'
+                    }
+                ];
+                characterProfiles = {
+                    default: {
+                        name: '默认助手',
+                        avatar: '🤖',
+                        description: '通用AI助手',
+                        systemPrompt: '你是一个友好的AI助手，喜欢和用户一起观看视频并互动。'
+                    }
+                };
+                updateCharacterSelector();
+            }
+
+            // 更新角色选择器UI
+            function updateCharacterSelector() {
+                if (!aiWatchCharacter) return;
+                
+                aiWatchCharacter.innerHTML = '';
+                characterList.forEach(char => {
+                    const option = document.createElement('option');
+                    option.value = char.id;
+                    option.textContent = `${char.avatar} ${char.name}`;
+                    aiWatchCharacter.appendChild(option);
+                });
+
+                // 默认选择第一个
+                if (characterList.length > 0) {
+                    aiWatchCharacter.value = characterList[0].id;
+                    currentCharacter = characterList[0].id;
+                    updateCharacterDescription();
+                }
+            }
+
+            // 更新角色描述
+            function updateCharacterDescription() {
+                const descEl = document.getElementById('character-description');
+                if (!descEl) return;
+                
+                const char = characterProfiles[currentCharacter];
+                if (char) {
+                    // 显示角色名称和人设描述
+                    const displayText = char.description || `${char.name}（来自聊天页面）`;
+                    descEl.textContent = displayText;
+                    descEl.style.display = 'block';
+                    descEl.title = char.systemPrompt || displayText; // 鼠标悬停时显示完整人设
+                } else {
+                    descEl.style.display = 'none';
+                }
+            }
+
+            // 页面加载时初始化角色列表和配置
+            // 延迟加载，确保state对象已初始化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    setTimeout(() => {
+                        loadCharacterList();
+                        loadVisualIntervalConfig();
+                    }, 500);
+                });
+            } else {
+                setTimeout(() => {
+                    loadCharacterList();
+                    loadVisualIntervalConfig();
+                }, 500);
+            }
+            
+            // 监听配置输入框变化
+            const visualIntervalInput = document.getElementById('visual-interval-input');
+            if (visualIntervalInput) {
+                visualIntervalInput.addEventListener('change', loadVisualIntervalConfig);
+                visualIntervalInput.addEventListener('input', function() {
+                    // 实时验证输入范围
+                    const value = parseInt(this.value, 10);
+                    if (value < 60) this.value = 60;
+                    if (value > 600) this.value = 600;
+                });
+            }
+            
+            // 监听角色库变化（当用户在聊天页面添加/删除角色时）
+            // 使用MutationObserver监听state.chats的变化
+            if (window.state && window.state.chats) {
+                // 创建一个代理来监听chats对象的变化
+                let chatsProxy = new Proxy(window.state.chats, {
+                    set: function(target, property, value) {
+                        target[property] = value;
+                        // 延迟重新加载，避免频繁触发
+                        clearTimeout(window._characterListReloadTimer);
+                        window._characterListReloadTimer = setTimeout(loadCharacterList, 500);
+                        return true;
+                    },
+                    deleteProperty: function(target, property) {
+                        delete target[property];
+                        clearTimeout(window._characterListReloadTimer);
+                        window._characterListReloadTimer = setTimeout(loadCharacterList, 500);
+                        return true;
+                    }
+                });
+                
+                // 如果state.chats还没有被代理，则替换它
+                if (!window.state.chats._isProxied) {
+                    window.state.chats = chatsProxy;
+                    window.state.chats._isProxied = true;
+                }
+                
+                // 也监听页面显示观影室时重新加载
+                const movieScreen = document.getElementById('movie-screen');
+                if (movieScreen) {
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                                if (movieScreen.classList.contains('active')) {
+                                    // 观影室显示时重新加载角色列表
+                                    setTimeout(loadCharacterList, 300);
+                                }
+                            }
+                        });
+                    });
+                    observer.observe(movieScreen, { attributes: true });
+                }
+            }
+
+            // 添加聊天消息
+            function addChatMessage(type, text, imageData = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `ai-chat-message ${type}`;
+                
+                if (imageData && type === 'ai') {
+                    // 如果有截图，显示缩略图
+                    const img = document.createElement('img');
+                    img.src = imageData;
+                    img.style.width = '60px';
+                    img.style.height = '40px';
+                    img.style.borderRadius = '4px';
+                    img.style.marginRight = '8px';
+                    img.style.objectFit = 'cover';
+                    img.style.display = 'inline-block';
+                    img.style.verticalAlign = 'top';
+                    messageDiv.appendChild(img);
+                }
+                
+                const textSpan = document.createElement('span');
+                textSpan.textContent = text;
+                messageDiv.appendChild(textSpan);
+                
+                aiChatMessages.appendChild(messageDiv);
+                aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+            }
+
+            // 获取当前视频标题
+            function getCurrentVideoTitle() {
+                // 尝试从搜索结果中获取
+                const activeCard = document.querySelector('.movie-card:active, .movie-card:hover');
+                if (activeCard) {
+                    const titleEl = activeCard.querySelector('.movie-title');
+                    if (titleEl) {
+                        return titleEl.textContent.trim();
+                    }
+                }
+                // 尝试从播放器获取
+                if (movieIframe.src) {
+                    try {
+                        // 从iframe的src中提取标题（如果可能）
+                        return currentVideoTitle;
+                    } catch (e) {}
+                }
+                return currentVideoTitle;
+            }
+
+            // 截取视频画面并缓存（适配iframe和video）
+            function captureVideoFrame() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 320;
+                    canvas.height = 180;
+
+                    let frameData = null;
+                    
+                    // 尝试从video标签截取
+                    if (movieVideo.classList.contains('active') && movieVideo.readyState >= 2) {
+                        ctx.drawImage(movieVideo, 0, 0, canvas.width, canvas.height);
+                        frameData = canvas.toDataURL('image/jpeg', 0.7);
+                    }
+                    // 尝试从iframe截取（注意：跨域iframe可能无法截取）
+                    else if (movieIframe.style.display !== 'none' && movieIframe.src) {
+                        try {
+                            // 注意：跨域iframe无法直接截取，这里返回null
+                            // 实际项目中可能需要通过postMessage与iframe通信
+                            frameData = null;
+                        } catch (e) {
+                            frameData = null;
+                        }
+                    }
+                    
+                    // 如果成功截取，添加到缓存
+                    if (frameData) {
+                        const timestamp = Date.now();
+                        frameCache.push({
+                            data: frameData,
+                            timestamp: timestamp,
+                            playTime: movieVideo.currentTime || 0
+                        });
+                        
+                        // 限制缓存大小，最多保存30帧
+                        if (frameCache.length > 30) {
+                            frameCache.shift();
+                        }
+                    }
+                    
+                    return frameData;
+                } catch (error) {
+                    console.log('截取画面失败:', error);
+                    return null;
+                }
+            }
+            
+            // 压缩图片到指定尺寸（160-256px）
+            function compressFrame(frameData, maxSize = 256) {
+                return new Promise((resolve) => {
+                    try {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            // 计算压缩后的尺寸（保持宽高比）
+                            let width = img.width;
+                            let height = img.height;
+                            const ratio = Math.min(maxSize / width, maxSize / height);
+                            width = Math.floor(width * ratio);
+                            height = Math.floor(height * ratio);
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // 压缩为JPEG，质量0.7
+                            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                            resolve(compressed);
+                        };
+                        img.onerror = () => resolve(frameData); // 失败则返回原图
+                        img.src = frameData;
+                    } catch (error) {
+                        console.error('压缩图片失败:', error);
+                        resolve(frameData);
+                    }
+                });
+            }
+            
+            // 计算两张图片的差异度（简化版：基于像素差异）
+            function calculateFrameDifference(frame1, frame2) {
+                return new Promise((resolve) => {
+                    try {
+                        const img1 = new Image();
+                        const img2 = new Image();
+                        let loaded = 0;
+                        
+                        const checkLoaded = () => {
+                            loaded++;
+                            if (loaded === 2) {
+                                try {
+                                    const canvas = document.createElement('canvas');
+                                    const ctx = canvas.getContext('2d');
+                                    const size = Math.min(64, Math.min(img1.width, img2.width));
+                                    canvas.width = size;
+                                    canvas.height = size;
+                                    
+                                    // 绘制并比较
+                                    ctx.drawImage(img1, 0, 0, size, size);
+                                    const data1 = ctx.getImageData(0, 0, size, size).data;
+                                    
+                                    ctx.drawImage(img2, 0, 0, size, size);
+                                    const data2 = ctx.getImageData(0, 0, size, size).data;
+                                    
+                                    // 计算差异
+                                    let diff = 0;
+                                    for (let i = 0; i < data1.length; i += 4) {
+                                        diff += Math.abs(data1[i] - data2[i]) + 
+                                                Math.abs(data1[i+1] - data2[i+1]) + 
+                                                Math.abs(data1[i+2] - data2[i+2]);
+                                    }
+                                    resolve(diff / (size * size * 3));
+                                } catch (e) {
+                                    resolve(0.5); // 默认中等差异
+                                }
+                            }
+                        };
+                        
+                        img1.onload = checkLoaded;
+                        img2.onload = checkLoaded;
+                        img1.onerror = () => { loaded++; checkLoaded(); };
+                        img2.onerror = () => { loaded++; checkLoaded(); };
+                        
+                        img1.src = frame1;
+                        img2.src = frame2;
+                    } catch (error) {
+                        resolve(0.5);
+                    }
+                });
+            }
+            
+            // 从缓存中筛选关键帧（1-3张）
+            async function selectKeyFrames() {
+                if (frameCache.length === 0) return [];
+                
+                const selectedFrames = [];
+                
+                // 如果只有1帧，直接返回
+                if (frameCache.length === 1) {
+                    const compressed = await compressFrame(frameCache[0].data, 256);
+                    return [{ data: compressed, timestamp: frameCache[0].timestamp }];
+                }
+                
+                // 总是包含首帧和末帧
+                const firstFrame = frameCache[0];
+                const lastFrame = frameCache[frameCache.length - 1];
+                
+                selectedFrames.push({
+                    data: await compressFrame(firstFrame.data, 256),
+                    timestamp: firstFrame.timestamp,
+                    type: 'first'
+                });
+                
+                if (frameCache.length > 1 && firstFrame !== lastFrame) {
+                    selectedFrames.push({
+                        data: await compressFrame(lastFrame.data, 256),
+                        timestamp: lastFrame.timestamp,
+                        type: 'last'
+                    });
+                }
+                
+                // 如果缓存中有多帧，找出差异最大的帧
+                if (frameCache.length > 2 && selectedFrames.length < 3) {
+                    let maxDiff = 0;
+                    let maxDiffFrame = null;
+                    let maxDiffIndex = -1;
+                    
+                    for (let i = 1; i < frameCache.length - 1; i++) {
+                        const diff1 = await calculateFrameDifference(
+                            frameCache[i-1].data,
+                            frameCache[i].data
+                        );
+                        const diff2 = await calculateFrameDifference(
+                            frameCache[i].data,
+                            frameCache[i+1].data
+                        );
+                        const totalDiff = diff1 + diff2;
+                        
+                        if (totalDiff > maxDiff) {
+                            maxDiff = totalDiff;
+                            maxDiffFrame = frameCache[i];
+                            maxDiffIndex = i;
+                        }
+                    }
+                    
+                    if (maxDiffFrame && maxDiff > 0.3) { // 差异阈值
+                        selectedFrames.push({
+                            data: await compressFrame(maxDiffFrame.data, 256),
+                            timestamp: maxDiffFrame.timestamp,
+                            type: 'keyframe'
+                        });
+                    }
+                }
+                
+                return selectedFrames.slice(0, 3); // 最多3帧
+            }
+            
+            // 检测触发条件
+            function checkVisualTriggerConditions() {
+                const now = Date.now();
+                const conditions = [];
+                
+                // 1. 长时间暂停播放（暂停超过10秒）
+                if (isPaused && (now - lastPauseTime) > 10000) {
+                    conditions.push('pause');
+                }
+                
+                // 2. 用户主动提及画面相关内容（30秒内）
+                if (lastUserMessageText && (now - lastUserMessageTime) < 30000) {
+                    const visualKeywords = ['画面', '镜头', '场景', '看到', '构图', '色彩', '特效', '视觉', '图像', '镜头', '拍摄', '画面', '镜头', '场景', '看到', '画面', '镜头', '构图', '色彩', '特效', '画面', '视觉', '图像'];
+                    const hasVisualKeyword = visualKeywords.some(keyword => 
+                        lastUserMessageText.includes(keyword)
+                    );
+                    if (hasVisualKeyword) {
+                        conditions.push('user_mention');
+                    }
+                }
+                
+                // 3. 剧情进入明显转折点（通过播放时间跳跃检测）
+                // 这里简化处理：如果视频播放时间有较大跳跃，可能是转折点
+                if (movieVideo && !movieVideo.paused) {
+                    const currentPlayTime = movieVideo.currentTime || 0;
+                    if (videoPlayTime > 0 && Math.abs(currentPlayTime - videoPlayTime) > 30) { // 跳跃超过30秒
+                        conditions.push('plot_turn');
+                    }
+                    videoPlayTime = currentPlayTime;
+                }
+                
+                return conditions;
+            }
+            
+            // 检查是否可以调用视觉模型
+            function canCallVisualAPI() {
+                const now = Date.now();
+                
+                // 检查时间间隔
+                const timeSinceLastCall = (now - lastVisualCallTime) / 1000; // 转换为秒
+                if (timeSinceLastCall < visualInterval) {
+                    return { allowed: false, reason: 'cooldown', remaining: visualInterval - timeSinceLastCall };
+                }
+                
+                // 检查触发条件
+                const triggers = checkVisualTriggerConditions();
+                if (triggers.length === 0) {
+                    return { allowed: false, reason: 'no_trigger' };
+                }
+                
+                return { allowed: true, triggers: triggers };
+            }
+
+            // 获取API配置（从主API设置中获取）
+            function getAPIConfig() {
+                // 优先从state.apiConfig中获取（如果已保存）
+                let proxyUrl = '';
+                let apiKey = '';
+                let model = '';
+                
+                if (window.state && window.state.apiConfig) {
+                    proxyUrl = window.state.apiConfig.proxyUrl || '';
+                    apiKey = window.state.apiConfig.apiKey || '';
+                    model = window.state.apiConfig.model || '';
+                }
+                
+                // 如果state中没有，从页面输入框获取
+                const proxyUrlInput = document.getElementById('proxy-url');
+                const apiKeyInput = document.getElementById('api-key');
+                const modelSelect = document.getElementById('model-select');
+                
+                if (proxyUrlInput) proxyUrl = proxyUrlInput.value || proxyUrl;
+                if (apiKeyInput) apiKey = apiKeyInput.value || apiKey;
+                if (modelSelect) model = modelSelect.value || model;
+                
+                return { proxyUrl, apiKey, model };
+            }
+
+            // AI分析视频（支持视觉调用和文本调用）
+            async function analyzeVideoFrame(keyFrames, title, isVisualCall = false) {
+                const character = characterProfiles[currentCharacter];
+                if (!character) {
+                    return { text: '角色信息加载中...', frameData: null };
+                }
+
+                const apiConfig = getAPIConfig();
+                
+                // 如果没有配置API，使用模拟回复
+                if (!apiConfig.proxyUrl || !apiConfig.apiKey || !apiConfig.model) {
+                    return await analyzeVideoFrameFallback(keyFrames, title, character, isVisualCall);
+                }
+
+                try {
+                    // 构建请求体
+                    const messages = [
+                        {
+                            role: 'system',
+                            content: character.systemPrompt + `\n\n当前正在观看的视频标题是：《${title}》。请根据视频内容，生成一条简短有趣的评论（50字以内）。`
+                        }
+                    ];
+
+                    // 视觉调用：发送关键帧图片
+                    if (isVisualCall && keyFrames && keyFrames.length > 0) {
+                        const imageContents = keyFrames.map(frame => ({
+                            type: 'image_url',
+                            image_url: { url: frame.data }
+                        }));
+                        
+                        messages.push({
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: `这是视频的${keyFrames.length}张关键帧截图，请分析画面内容并评论：`
+                                },
+                                ...imageContents
+                            ]
+                        });
+                    } 
+                    // 文本调用：只发送事件描述
+                    else {
+                        let contextText = `当前正在观看《${title}》`;
+                        if (isPaused) {
+                            contextText += '，视频已暂停';
+                        }
+                        contextText += '，请生成一条简短的评论。';
+                        
+                        messages.push({
+                            role: 'user',
+                            content: contextText
+                        });
+                    }
+
+                    // 调用AI API
+                    const response = await fetch(`${apiConfig.proxyUrl}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: apiConfig.model,
+                            messages: messages,
+                            max_tokens: 150,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API请求失败: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const comment = data.choices?.[0]?.message?.content || '分析中...';
+
+                    return {
+                        text: comment,
+                        frameData: isVisualCall && keyFrames && keyFrames.length > 0 ? keyFrames[0].data : null
+                    };
+                } catch (error) {
+                    console.error('AI API调用失败:', error);
+                    // 降级到模拟回复
+                    return await analyzeVideoFrameFallback(keyFrames, title, character, isVisualCall);
+                }
+            }
+
+            // 降级方案：模拟AI回复
+            async function analyzeVideoFrameFallback(keyFrames, title, character, isVisualCall) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                const fallbackComments = isVisualCall ? [
+                    `《${title}》这个画面很有意思！`,
+                    `正在观看《${title}》，画面构图很棒！`,
+                    `《${title}》的这个镜头很有视觉冲击力！`,
+                    `一起看《${title}》真不错，画面很美！`,
+                    `《${title}》的视觉呈现很棒！`
+                ] : [
+                    `《${title}》剧情发展很有趣～`,
+                    `正在观看《${title}》，节奏把握得很好！`,
+                    `《${title}》的剧情很有意思！`,
+                    `一起看《${title}》真不错，你觉得呢？`,
+                    `《${title}》的节奏把握得很好！`
+                ];
+                
+                const comment = fallbackComments[Math.floor(Math.random() * fallbackComments.length)];
+                
+                return {
+                    text: comment,
+                    frameData: isVisualCall && keyFrames && keyFrames.length > 0 ? keyFrames[0].data : null
+                };
+            }
+
+            // AI实时分析视频（使用新的视觉调用间隔系统）
+            async function aiWatchVideo() {
+                if (!isWatching) return;
+                
+                const title = getCurrentVideoTitle();
+                currentVideoTitle = title;
+                
+                // 持续缓存截图（但不立即发送）
+                captureVideoFrame();
+                
+                // 检查是否可以调用视觉API
+                const visualCheck = canCallVisualAPI();
+                
+                if (visualCheck.allowed) {
+                    // 允许视觉调用：从缓存中筛选关键帧
+                    const keyFrames = await selectKeyFrames();
+                    
+                    if (keyFrames.length > 0) {
+                        // 更新最后调用时间
+                        lastVisualCallTime = Date.now();
+                        
+                        // 清空缓存（已使用）
+                        frameCache = [];
+                        
+                        // 使用视觉调用分析
+                        const analysis = await analyzeVideoFrame(keyFrames, title, true);
+                        
+                        // 显示AI评论（带图片）
+                        addChatMessage('ai', analysis.text, analysis.frameData);
+                        
+                        console.log(`视觉调用成功，触发条件: ${visualCheck.triggers.join(', ')}`);
+                    } else {
+                        // 没有关键帧，使用文本调用
+                        const analysis = await analyzeVideoFrame(null, title, false);
+                        addChatMessage('ai', analysis.text, null);
+                    }
+                } else {
+                    // 不允许视觉调用：使用文本调用
+                    const analysis = await analyzeVideoFrame(null, title, false);
+                    addChatMessage('ai', analysis.text, null);
+                    
+                    if (visualCheck.reason === 'cooldown') {
+                        console.log(`视觉调用冷却中，还需等待 ${Math.ceil(visualCheck.remaining)} 秒`);
+                    }
+                }
+            }
+
+            // 读取视觉调用间隔配置
+            function loadVisualIntervalConfig() {
+                const input = document.getElementById('visual-interval-input');
+                if (input) {
+                    const value = parseInt(input.value, 10);
+                    if (value >= 60 && value <= 600) {
+                        visualInterval = value;
+                        console.log(`视觉调用间隔已设置为: ${visualInterval}秒`);
+                    }
+                }
+            }
+            
+            // 初始化视频事件监听
+            function initVideoEventListeners() {
+                if (movieVideo) {
+                    // 监听暂停/播放
+                    movieVideo.addEventListener('pause', function() {
+                        isPaused = true;
+                        lastPauseTime = Date.now();
+                    });
+                    
+                    movieVideo.addEventListener('play', function() {
+                        isPaused = false;
+                        videoPlayTime = movieVideo.currentTime || 0;
+                    });
+                    
+                    // 监听播放时间更新
+                    movieVideo.addEventListener('timeupdate', function() {
+                        videoPlayTime = movieVideo.currentTime || 0;
+                    });
+                }
+            }
+            
+            // 启动/停止AI陪看
+            function toggleAIWatch() {
+                if (!movieIframe.src && !movieVideo.src) {
+                    alert('请先播放视频再开启AI陪看～');
+                    return;
+                }
+
+                isWatching = !isWatching;
+                currentCharacter = aiWatchCharacter.value;
+                
+                // 读取配置
+                loadVisualIntervalConfig();
+
+                // 确保聊天框始终显示
+                if (aiWatchChat) {
+                    aiWatchChat.style.display = 'flex';
+                    aiWatchChat.classList.add('active');
+                }
+
+                if (isWatching) {
+                    // 初始化状态
+                    lastVisualCallTime = 0;
+                    frameCache = [];
+                    lastPauseTime = 0;
+                    isPaused = movieVideo ? movieVideo.paused : false;
+                    videoPlayTime = movieVideo ? movieVideo.currentTime || 0 : 0;
+                    
+                    // 初始化视频事件监听
+                    initVideoEventListeners();
+                    
+                    aiWatchBtn.textContent = '⏸️ 停止AI陪看';
+                    aiWatchBtn.style.backgroundColor = '#dc3545';
+                    
+                    // 显示欢迎消息
+                    const character = characterProfiles[currentCharacter];
+                    if (character) {
+                        addChatMessage('system', `已切换到「${character.name}」模式，开始陪看《${getCurrentVideoTitle()}》～视觉调用间隔: ${visualInterval}秒`);
+                    }
+                    
+                    // 每5秒分析一次（但视觉调用受间隔限制）
+                    watchInterval = setInterval(aiWatchVideo, 5000);
+                    // 立即分析一次
+                    aiWatchVideo();
+                } else {
+                    aiWatchBtn.textContent = '🤖 开始AI陪看';
+                    aiWatchBtn.style.backgroundColor = '#28a745';
+                    clearInterval(watchInterval);
+                    frameCache = []; // 清空缓存
+                    addChatMessage('system', 'AI陪看已停止');
+                }
+            }
+
+            // 发送用户消息（对接真实AI接口）
+            async function sendUserMessage() {
+                const text = aiChatInput.value.trim();
+                if (!text) return;
+
+                // 记录用户消息（用于检测画面相关内容）
+                lastUserMessageText = text;
+                lastUserMessageTime = Date.now();
+
+                addChatMessage('user', text);
+                aiChatInput.value = '';
+
+                const character = characterProfiles[currentCharacter];
+                if (!character) {
+                    addChatMessage('ai', '角色信息加载中，请稍候...');
+                    return;
+                }
+
+                const apiConfig = getAPIConfig();
+                
+                // 如果没有配置API，使用模拟回复
+                if (!apiConfig.proxyUrl || !apiConfig.apiKey || !apiConfig.model) {
+                    setTimeout(() => {
+                        const replies = [
+                            '我也有同感！',
+                            '这个想法不错～',
+                            '继续看下去，应该会有更多惊喜！',
+                            '嗯嗯，我明白了',
+                            '说得对！'
+                        ];
+                        const reply = replies[Math.floor(Math.random() * replies.length)];
+                        addChatMessage('ai', reply);
+                    }, 1000);
+                    return;
+                }
+
+                try {
+                    // 获取聊天历史（最近5条）
+                    const recentMessages = Array.from(aiChatMessages.querySelectorAll('.ai-chat-message'))
+                        .slice(-5)
+                        .map(msg => {
+                            const isUser = msg.classList.contains('user');
+                            return {
+                                role: isUser ? 'user' : 'assistant',
+                                content: msg.textContent.trim()
+                            };
+                        });
+
+                    // 构建消息
+                    const messages = [
+                        {
+                            role: 'system',
+                            content: character.systemPrompt + `\n\n当前正在观看的视频是：《${getCurrentVideoTitle()}》。请根据用户的提问，用${character.name}的风格回复。`
+                        },
+                        ...recentMessages,
+                        {
+                            role: 'user',
+                            content: text
+                        }
+                    ];
+
+                    // 调用AI API
+                    const response = await fetch(`${apiConfig.proxyUrl}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: apiConfig.model,
+                            messages: messages,
+                            max_tokens: 200,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API请求失败: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const reply = data.choices?.[0]?.message?.content || '抱歉，我暂时无法回复...';
+                    
+                    addChatMessage('ai', reply);
+                } catch (error) {
+                    console.error('AI API调用失败:', error);
+                    addChatMessage('ai', '抱歉，AI服务暂时不可用，请检查API配置。');
+                }
+            }
+
+            // 绑定事件
+            if (aiWatchCharacter) {
+                aiWatchCharacter.addEventListener('change', function() {
+                    currentCharacter = this.value;
+                    updateCharacterDescription();
+                });
+            }
+
+            if (aiWatchBtn) {
+                aiWatchBtn.addEventListener('click', toggleAIWatch);
+            }
+
+            if (aiChatSendBtn) {
+                aiChatSendBtn.addEventListener('click', sendUserMessage);
+            }
+
+            if (aiChatInput) {
+                aiChatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendUserMessage();
+                    }
+                });
+            }
+
+            if (closeAiChatBtn) {
+                closeAiChatBtn.addEventListener('click', function() {
+                    // 切换聊天框显示/隐藏
+                    if (aiWatchChat.style.display === 'none') {
+                        aiWatchChat.style.display = 'flex';
+                        aiWatchChat.classList.add('active');
+                    } else {
+                        aiWatchChat.style.display = 'none';
+                        aiWatchChat.classList.remove('active');
+                    }
+                });
+            }
+
+            // 监听视频标题变化（当播放新视频时）
+            const originalPlayMovie = window.playMovie;
+            if (typeof originalPlayMovie === 'function') {
+                // 如果playMovie是全局函数，可以在这里监听
+            }
+
+            // 保存当前视频标题（在播放时更新）
+            const originalPlayBilibili = window.playBilibili;
+            if (typeof originalPlayBilibili === 'function') {
+                // 可以在这里更新标题
             }
         })();
      </script>
