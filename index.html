@@ -69623,21 +69623,48 @@ SVG要求（重要：必须是像素风格）：
             // 开始屏幕捕获
             async function startScreenCapture() {
                 try {
-                    // 检查浏览器支持
-                    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                        showAICompanionMessage('系统', '您的浏览器不支持屏幕捕获功能，请使用 Chrome、Edge 或 Safari 浏览器。', 'error');
+                    // 检查浏览器支持（Safari 13+ 支持 getDisplayMedia）
+                    if (!navigator.mediaDevices) {
+                        showAICompanionMessage('系统', '您的浏览器不支持媒体设备 API。请使用 Safari 13+、Chrome 72+ 或 Edge 79+ 浏览器。', 'error');
+                        return;
+                    }
+                    
+                    // Safari 可能没有 getDisplayMedia，需要检查
+                    if (typeof navigator.mediaDevices.getDisplayMedia === 'undefined') {
+                        // 检查是否是 Safari
+                        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                        if (isSafari) {
+                            showAICompanionMessage('系统', '您的 Safari 版本可能过旧。屏幕捕获功能需要 Safari 13+（macOS 10.15+ 或 iOS 13+）。请更新 Safari 或使用其他现代浏览器。', 'error');
+                        } else {
+                            showAICompanionMessage('系统', '您的浏览器不支持屏幕捕获功能。请使用 Safari 13+、Chrome 72+ 或 Edge 79+ 浏览器。', 'error');
+                        }
+                        return;
+                    }
+                    
+                    // 检查是否在安全上下文（HTTPS 或 localhost）
+                    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                        showAICompanionMessage('系统', '屏幕捕获功能需要在 HTTPS 环境下使用，或使用 localhost。当前协议：' + location.protocol, 'error');
                         return;
                     }
                     
                     // 请求屏幕/窗口捕获权限
-                    const stream = await navigator.mediaDevices.getDisplayMedia({
-                        video: {
-                            displaySurface: 'browser', // 或 'window', 'monitor'
+                    // Safari 对参数支持有限，使用更兼容的配置
+                    const constraints = {
+                        video: true, // Safari 可能不支持 displaySurface 等高级选项
+                        audio: false
+                    };
+                    
+                    // 对于非 Safari 浏览器，可以添加更多选项
+                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    if (!isSafari) {
+                        constraints.video = {
+                            displaySurface: 'browser',
                             width: { ideal: 1920 },
                             height: { ideal: 1080 }
-                        },
-                        audio: false // 不捕获音频
-                    });
+                        };
+                    }
+                    
+                    const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
                     
                     aiCompanionState.mediaStream = stream;
                     aiCompanionState.isActive = true;
@@ -69666,13 +69693,44 @@ SVG要求（重要：必须是像素风格）：
                 } catch (error) {
                     console.error('屏幕捕获失败:', error);
                     let errorMsg = '屏幕捕获失败';
-                    if (error.name === 'NotAllowedError') {
-                        errorMsg = '您拒绝了屏幕捕获权限，请重新授权';
-                    } else if (error.name === 'NotFoundError') {
-                        errorMsg = '未找到可捕获的屏幕或窗口';
-                    } else if (error.name === 'NotReadableError') {
-                        errorMsg = '无法读取屏幕内容，请检查权限设置';
+                    
+                    // 详细的错误处理
+                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                        errorMsg = '您拒绝了屏幕捕获权限。请点击地址栏左侧的锁图标，允许屏幕录制权限后重试。';
+                    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                        errorMsg = '未找到可捕获的屏幕或窗口。请确保有可用的显示器。';
+                    } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                        errorMsg = '无法读取屏幕内容。可能是其他应用正在使用屏幕捕获，请关闭后重试。';
+                    } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+                        errorMsg = '屏幕捕获参数不支持。正在尝试使用兼容模式...';
+                        // 尝试使用最简单的配置
+                        try {
+                            const simpleStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                            aiCompanionState.mediaStream = simpleStream;
+                            aiCompanionState.isActive = true;
+                            const video = document.getElementById('ai-companion-video');
+                            const placeholder = document.querySelector('.ai-companion-preview-placeholder');
+                            if (video && placeholder) {
+                                video.srcObject = simpleStream;
+                                video.style.display = 'block';
+                                placeholder.style.display = 'none';
+                            }
+                            simpleStream.getVideoTracks()[0].addEventListener('ended', function() {
+                                stopScreenCapture();
+                                showAICompanionMessage('系统', '屏幕共享已停止', 'system');
+                            });
+                            startFrameCapture();
+                            showAICompanionMessage('AI', '开始陪看啦！我会每 2 秒分析一次画面，有什么想聊的随时告诉我～', 'ai');
+                            return;
+                        } catch (retryError) {
+                            errorMsg = '屏幕捕获失败：' + (retryError.message || '未知错误');
+                        }
+                    } else if (error.name === 'TypeError') {
+                        errorMsg = '浏览器不支持此功能。请确保使用 Safari 13+、Chrome 72+ 或 Edge 79+，并且页面在 HTTPS 环境下。';
+                    } else {
+                        errorMsg = '屏幕捕获失败：' + (error.message || error.name || '未知错误');
                     }
+                    
                     showAICompanionMessage('系统', errorMsg, 'error');
                 }
             }
