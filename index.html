@@ -10690,10 +10690,67 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
             padding: 10px !important;
             height: 40px !important;
             border-radius: 12px 12px 0 0 !important;
+            cursor: move !important;
+            user-select: none !important;
         }
         
         #chat-interface-screen.floating-chat-window .back-btn {
             display: none !important; /* Hide back button in floating mode */
+        }
+        
+        /* 最小化状态 */
+        #chat-interface-screen.floating-chat-window.minimized {
+            display: none !important;
+        }
+        
+        /* 悬浮小按钮 */
+        #floating-chat-mini-btn {
+            position: fixed;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        #floating-chat-mini-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        #floating-chat-mini-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* 最小化按钮 */
+        #floating-chat-minimize-btn {
+            position: absolute;
+            top: 5px;
+            right: 45px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10002;
+            color: var(--text-primary);
+            font-weight: bold;
+            width: 30px;
+            height: 30px;
+            text-align: center;
+            line-height: 30px;
+            transition: all 0.2s;
+        }
+        
+        #floating-chat-minimize-btn:hover {
+            transform: scale(1.2);
+            color: #667eea;
         }
         
         /* ========== CSS 伪全屏方案 ========== */
@@ -72092,14 +72149,137 @@ SVG要求（重要：必须是像素风格）：
             if (movieScreen) observer.observe(movieScreen, { attributes: true });
 
 
+            // ========== 拖拽功能 ==========
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let windowStartX = 0;
+            let windowStartY = 0;
+
+            function initDraggable() {
+                const header = chatScreen.querySelector('.header');
+                if (!header) return;
+
+                header.addEventListener('mousedown', startDrag);
+                header.addEventListener('touchstart', startDrag, { passive: false });
+            }
+
+            function startDrag(e) {
+                // 如果点击的是按钮，不触发拖拽
+                if (e.target.id === 'floating-chat-close-btn' || 
+                    e.target.id === 'floating-chat-minimize-btn' ||
+                    e.target.closest('.header-actions')) {
+                    return;
+                }
+
+                isDragging = true;
+                
+                const touch = e.type === 'touchstart' ? e.touches[0] : e;
+                dragStartX = touch.clientX;
+                dragStartY = touch.clientY;
+
+                const rect = chatScreen.getBoundingClientRect();
+                windowStartX = rect.left;
+                windowStartY = rect.top;
+
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('touchmove', onDrag, { passive: false });
+                document.addEventListener('mouseup', stopDrag);
+                document.addEventListener('touchend', stopDrag);
+
+                e.preventDefault();
+            }
+
+            function onDrag(e) {
+                if (!isDragging) return;
+
+                const touch = e.type === 'touchmove' ? e.touches[0] : e;
+                const deltaX = touch.clientX - dragStartX;
+                const deltaY = touch.clientY - dragStartY;
+
+                let newX = windowStartX + deltaX;
+                let newY = windowStartY + deltaY;
+
+                // 边界限制
+                const maxX = window.innerWidth - chatScreen.offsetWidth;
+                const maxY = window.innerHeight - chatScreen.offsetHeight;
+
+                newX = Math.max(0, Math.min(newX, maxX));
+                newY = Math.max(0, Math.min(newY, maxY));
+
+                chatScreen.style.left = newX + 'px';
+                chatScreen.style.top = newY + 'px';
+                chatScreen.style.right = 'auto';
+                chatScreen.style.bottom = 'auto';
+
+                e.preventDefault();
+            }
+
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('touchmove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchend', stopDrag);
+            }
+
+            // ========== 最小化/展开功能 ==========
+            function minimizeFloatingChat() {
+                chatScreen.classList.add('minimized');
+                
+                // 创建悬浮小按钮
+                let minBtn = document.getElementById('floating-chat-mini-btn');
+                if (!minBtn) {
+                    minBtn = document.createElement('button');
+                    minBtn.id = 'floating-chat-mini-btn';
+                    minBtn.innerHTML = '💬';
+                    minBtn.onclick = restoreFloatingChat;
+                    document.body.appendChild(minBtn);
+                }
+                
+                // 记录窗口位置，将小按钮放在相同位置
+                const rect = chatScreen.getBoundingClientRect();
+                minBtn.style.left = rect.right - 56 + 'px';
+                minBtn.style.top = rect.top + 'px';
+                minBtn.style.display = 'flex';
+                
+                console.log('聊天窗口已最小化');
+            }
+
+            function restoreFloatingChat() {
+                chatScreen.classList.remove('minimized');
+                
+                const minBtn = document.getElementById('floating-chat-mini-btn');
+                if (minBtn) {
+                    // 将窗口位置设置为小按钮位置
+                    const rect = minBtn.getBoundingClientRect();
+                    chatScreen.style.left = rect.left + 'px';
+                    chatScreen.style.top = rect.top + 'px';
+                    chatScreen.style.right = 'auto';
+                    
+                    minBtn.style.display = 'none';
+                }
+                
+                console.log('聊天窗口已恢复');
+            }
+
             function toggleFloatingChat() {
                 if (chatScreen.classList.contains('active') && chatScreen.classList.contains('floating-chat-window')) {
                     // 关闭悬浮聊天
                     chatScreen.classList.remove('active');
                     chatScreen.classList.remove('floating-chat-window');
+                    chatScreen.classList.remove('minimized');
                     chatScreen.style.display = 'none';
+                    
                     const closeBtn = document.getElementById('floating-chat-close-btn');
                     if (closeBtn) closeBtn.remove();
+                    
+                    const minimizeBtn = document.getElementById('floating-chat-minimize-btn');
+                    if (minimizeBtn) minimizeBtn.remove();
+                    
+                    const minBtn = document.getElementById('floating-chat-mini-btn');
+                    if (minBtn) minBtn.remove();
+                    
                     window.screeningRoomContext.isWatching = false;
                 } else {
                     // 获取当前选中的角色
@@ -72128,6 +72308,18 @@ SVG要求（重要：必须是像素风格）：
                         closeBtn.onclick = toggleFloatingChat;
                         chatScreen.appendChild(closeBtn);
                     }
+                    
+                    // 添加最小化按钮
+                    if (!document.getElementById('floating-chat-minimize-btn')) {
+                        const minimizeBtn = document.createElement('div');
+                        minimizeBtn.id = 'floating-chat-minimize-btn';
+                        minimizeBtn.innerHTML = '−';
+                        minimizeBtn.onclick = minimizeFloatingChat;
+                        chatScreen.appendChild(minimizeBtn);
+                    }
+                    
+                    // 初始化拖拽功能
+                    initDraggable();
                     
                     window.screeningRoomContext.isWatching = true;
                     initVideoEventListeners();
