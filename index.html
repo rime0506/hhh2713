@@ -12256,6 +12256,7 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
             <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
                 <button id="notification-request-btn" class="form-button-secondary" style="padding: 8px 16px; font-size: 13px; display: none;">开启通知</button>
                 <button id="notification-test-btn" class="form-button-secondary" style="padding: 8px 16px; font-size: 13px; display: none; background-color: #e3f2fd; color: #1976d2; border-color: #90caf9;">测试通知</button>
+                <button id="notification-background-test-btn" class="form-button-secondary" style="padding: 8px 16px; font-size: 13px; display: none; background-color: #fff3e0; color: #e65100; border-color: #ffb74d;">🔒 测试后台通知（10秒）</button>
             </div>
         </div>
         <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;"> <label for="chat-list-render-window-input" style="margin-bottom: 0;"data-lang-key="apiChatListRenderWindowLabel"> 聊天列表每次加载条数 <p style="font-size: 12px; font-weight: normal; color: #999; margin-top: 5px;">
@@ -69569,6 +69570,7 @@ SVG要求（重要：必须是像素风格）：
         const statusText = document.getElementById('notification-status-text');
         const requestBtn = document.getElementById('notification-request-btn');
         const testBtn = document.getElementById('notification-test-btn');
+        const bgTestBtn = document.getElementById('notification-background-test-btn');
         
         if (!switchEl || !statusDisplay || !statusText) return;
         
@@ -69588,6 +69590,7 @@ SVG要求（重要：必须是像素风格）：
                 statusText.style.color = '#4cd964';
                 if (requestBtn) requestBtn.style.display = 'none';
                 if (testBtn) testBtn.style.display = 'block';
+                if (bgTestBtn) bgTestBtn.style.display = 'block';
                 break;
             case 'denied':
                 if (switchEl) switchEl.checked = false;
@@ -69595,6 +69598,7 @@ SVG要求（重要：必须是像素风格）：
                 statusText.style.color = '#ff3b30';
                 if (requestBtn) requestBtn.style.display = 'none';
                 if (testBtn) testBtn.style.display = 'none';
+                if (bgTestBtn) bgTestBtn.style.display = 'none';
                 break;
             default:
                 if (switchEl) switchEl.checked = false;
@@ -69602,6 +69606,7 @@ SVG要求（重要：必须是像素风格）：
                 statusText.style.color = '#666';
                 if (requestBtn) requestBtn.style.display = 'block';
                 if (testBtn) testBtn.style.display = 'none';
+                if (bgTestBtn) bgTestBtn.style.display = 'none';
         }
     }
     
@@ -69782,7 +69787,7 @@ SVG要求（重要：必须是像素风格）：
         });
     }
     
-    // 发送测试通知
+    // 发送测试通知（立即发送）
     function sendTestNotification() {
         if (!isNotificationSupported()) {
             alert('您的浏览器不支持通知功能');
@@ -69794,16 +69799,25 @@ SVG要求（重要：必须是像素风格）：
             return;
         }
         
-        // 使用新的后台通知接口测试
-        if (window.sendBackgroundNotification) {
-            window.sendBackgroundNotification('test-chat', '测试通知', '这是一条测试通知。如果您看到这条消息，说明后台通知功能正常工作！', '🤖');
-        } else {
-            // 降级测试
-            try {
-                new Notification('测试通知', { body: '这是一条测试通知' });
-            } catch (e) {
-                alert('发送失败: ' + e.message);
-            }
+        // 立即发送通知
+        try {
+            const notification = new Notification('前台通知测试', {
+                body: '这是一条测试通知。如果您看到这条消息，说明通知功能正常工作！',
+                tag: 'test-notification',
+                requireInteraction: false,
+                silent: false
+            });
+            
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+            
+            setTimeout(() => notification.close(), 5000);
+            console.log('✅ 测试通知已发送');
+        } catch (error) {
+            console.error('❌ 发送测试通知失败:', error);
+            alert('发送测试通知失败：' + error.message);
         }
     }
     
@@ -69811,6 +69825,51 @@ SVG要求（重要：必须是像素风格）：
     const testBtn = document.getElementById('notification-test-btn');
     if (testBtn) {
         testBtn.addEventListener('click', sendTestNotification);
+    }
+    
+    // 绑定后台测试按钮事件
+    const bgTestBtn = document.getElementById('notification-background-test-btn');
+    if (bgTestBtn) {
+        bgTestBtn.addEventListener('click', function() {
+            alert('点击确定后，请立即切换到其他应用或锁屏！\n\n10秒后会发送通知，测试后台通知功能是否正常。');
+            
+            console.log('🧪 后台通知测试：10秒倒计时开始');
+            
+            let countdown = 10;
+            const countdownInterval = setInterval(() => {
+                console.log(`⏰ 倒计时: ${countdown} 秒`);
+                countdown--;
+                
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+            
+            setTimeout(() => {
+                console.log('📤 10秒已到，发送后台测试通知...');
+                
+                // 直接发送系统通知（不管前台后台）
+                try {
+                    const notification = new Notification('后台通知测试', {
+                        body: '如果你在锁屏/其他应用看到这条通知，说明后台通知功能完全正常！🎉',
+                        tag: 'background-test',
+                        requireInteraction: false,
+                        silent: false
+                    });
+                    
+                    notification.onclick = function() {
+                        window.focus();
+                        notification.close();
+                    };
+                    
+                    setTimeout(() => notification.close(), 10000);
+                    
+                    console.log('✅ 后台测试通知已发送');
+                } catch (error) {
+                    console.error('❌ 发送测试通知失败:', error);
+                }
+            }, 10000);
+        });
     }
     
     // 页面加载时初始化
