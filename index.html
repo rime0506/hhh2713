@@ -69682,31 +69682,76 @@ SVG要求（重要：必须是像素风格）：
         // ============================================
         
         /**
-         * 添加通知到队列
+         * 添加通知到队列（并立即发送）
          * @param {string} chatId - 聊天ID
          * @param {string} chatName - 聊天名称
          * @param {string} message - 消息内容
          * @param {string} avatar - 头像URL
+         * @param {boolean} immediate - 是否立即发送（默认true）
          */
-        function enqueueNotification(chatId, chatName, message, avatar) {
-            BackgroundSystem.notificationQueue.push({
+        function enqueueNotification(chatId, chatName, message, avatar, immediate = true) {
+            const notification = {
                 chatId,
                 chatName,
                 message,
                 avatar,
                 timestamp: Date.now()
-            });
+            };
             
-            console.log(`📬 通知已加入队列 (${BackgroundSystem.notificationQueue.length}条待发送)`);
-            
-            // 如果在后台，立即尝试发送
-            if (document.hidden) {
-                processNotificationQueue();
+            // 如果要求立即发送，直接发送
+            if (immediate) {
+                console.log(`📬 立即发送后台通知: ${chatName}`);
+                sendNotification(notification);
+            } else {
+                // 否则加入队列，等待批量处理
+                BackgroundSystem.notificationQueue.push(notification);
+                console.log(`📬 通知已加入队列 (${BackgroundSystem.notificationQueue.length}条待发送)`);
             }
         }
         
         /**
-         * 处理通知队列（发送系统通知）
+         * 发送单条通知
+         * @param {object} notif - 通知对象
+         */
+        function sendNotification(notif) {
+            // 检查通知权限
+            if (!('Notification' in window) || Notification.permission !== 'granted') {
+                console.warn('⚠️ 通知权限未授予，无法发送通知');
+                return false;
+            }
+            
+            try {
+                const notification = new Notification(notif.chatName, {
+                    body: notif.message.length > 80 ? notif.message.slice(0, 80) + '...' : notif.message,
+                    icon: notif.avatar,
+                    tag: `chat-${notif.chatId}`,
+                    requireInteraction: false,
+                    silent: false,
+                    data: { chatId: notif.chatId }
+                });
+                
+                // 点击通知时聚焦页面并打开聊天
+                notification.onclick = function() {
+                    window.focus();
+                    if (typeof openChat === 'function') {
+                        openChat(notif.chatId);
+                    }
+                    notification.close();
+                };
+                
+                // 5秒后自动关闭
+                setTimeout(() => notification.close(), 5000);
+                
+                console.log(`✅ 通知已发送: ${notif.chatName}`);
+                return true;
+            } catch (error) {
+                console.error('❌ 发送通知失败:', error);
+                return false;
+            }
+        }
+        
+        /**
+         * 处理通知队列（批量发送积压的通知）
          */
         function processNotificationQueue() {
             if (BackgroundSystem.notificationQueue.length === 0) {
@@ -69715,7 +69760,8 @@ SVG要求（重要：必须是像素风格）：
             
             // 检查通知权限
             if (!('Notification' in window) || Notification.permission !== 'granted') {
-                console.warn('⚠️ 通知权限未授予，跳过通知发送');
+                console.warn('⚠️ 通知权限未授予，清空队列');
+                BackgroundSystem.notificationQueue = [];
                 return;
             }
             
@@ -69723,33 +69769,10 @@ SVG要求（重要：必须是像素风格）：
             const maxNotifications = 3; // 最多一次发送3条
             const toSend = BackgroundSystem.notificationQueue.splice(0, maxNotifications);
             
+            console.log(`📮 批量发送 ${toSend.length} 条队列通知`);
+            
             toSend.forEach(notif => {
-                try {
-                    const notification = new Notification(notif.chatName, {
-                        body: notif.message.length > 80 ? notif.message.slice(0, 80) + '...' : notif.message,
-                        icon: notif.avatar,
-                        tag: `chat-${notif.chatId}`,
-                        requireInteraction: false,
-                        silent: false,
-                        data: { chatId: notif.chatId }
-                    });
-                    
-                    // 点击通知时聚焦页面并打开聊天
-                    notification.onclick = function() {
-                        window.focus();
-                        if (typeof openChat === 'function') {
-                            openChat(notif.chatId);
-                        }
-                        notification.close();
-                    };
-                    
-                    // 5秒后自动关闭
-                    setTimeout(() => notification.close(), 5000);
-                    
-                    console.log(`✅ 通知已发送: ${notif.chatName}`);
-                } catch (error) {
-                    console.error('发送通知失败:', error);
-                }
+                sendNotification(notif);
             });
             
             // 如果还有待发送的通知，记录日志
@@ -69770,14 +69793,18 @@ SVG要求（重要：必须是像素风格）：
             BackgroundSystem.state.isBackground = isNowBackground;
             
             if (isNowBackground) {
-                console.log('📱 页面切换到后台');
+                console.log('📱 页面切换到后台 - 启动保活系统');
                 
                 // 启动后台保活
                 startHeartbeat();
-                startAudioKeepAlive();
+                
+                // 尝试启动音频保活（可能需要用户交互才能激活）
+                setTimeout(() => {
+                    startAudioKeepAlive();
+                }, 100);
                 
             } else {
-                console.log('📱 页面切换到前台');
+                console.log('📱 页面切换到前台 - 停止保活系统');
                 
                 // 停止后台保活（节省资源）
                 stopHeartbeat();
@@ -69838,16 +69865,15 @@ SVG要求（重要：必须是像素风格）：
         // ============================================
         
         /**
-         * 发送后台通知（外部调用）
+         * 发送后台通知（外部调用 - 立即发送）
+         * @param {string} chatId - 聊天ID
+         * @param {string} chatName - 聊天名称
+         * @param {string} message - 消息内容
+         * @param {string} avatar - 头像URL
          */
         window.sendBackgroundNotification = function(chatId, chatName, message, avatar) {
-            // 如果在后台，加入队列
-            if (document.hidden) {
-                enqueueNotification(chatId, chatName, message, avatar);
-            } else {
-                // 如果在前台，直接显示通知（或者可以选择不显示）
-                console.log('📱 页面在前台，跳过通知');
-            }
+            // 立即发送通知（不管前台还是后台）
+            enqueueNotification(chatId, chatName, message, avatar, true);
         };
         
         /**
@@ -69885,6 +69911,39 @@ SVG要求（重要：必须是像素风格）：
         // 7. 初始化
         // ============================================
         
+        let audioContextActivated = false;
+        
+        // 用户首次交互时激活音频上下文
+        function activateAudioOnFirstInteraction() {
+            if (audioContextActivated) return;
+            
+            const activate = () => {
+                if (!audioContextActivated) {
+                    console.log('👆 检测到用户交互，激活音频上下文...');
+                    
+                    if (initAudioKeepAlive()) {
+                        audioContextActivated = true;
+                        console.log('✅ 音频上下文已激活');
+                        
+                        // 如果当前已在后台，立即启动保活
+                        if (document.hidden) {
+                            startAudioKeepAlive();
+                        }
+                        
+                        // 移除事件监听器
+                        ['touchstart', 'mousedown', 'click', 'keydown'].forEach(eventType => {
+                            document.removeEventListener(eventType, activate);
+                        });
+                    }
+                }
+            };
+            
+            // 监听首次用户交互
+            ['touchstart', 'mousedown', 'click', 'keydown'].forEach(eventType => {
+                document.addEventListener(eventType, activate, { once: true, passive: true });
+            });
+        }
+        
         // 页面加载完成后初始化
         if (document.readyState === 'complete') {
             init();
@@ -69895,19 +69954,28 @@ SVG要求（重要：必须是像素风格）：
         function init() {
             console.log('🚀 后台保活与通知系统初始化...');
             
-            // 初始化音频上下文（需要用户交互才能激活）
-            initAudioKeepAlive();
+            // 尝试初始化音频上下文（可能需要用户交互）
+            if (!initAudioKeepAlive()) {
+                console.log('⚠️ 音频上下文需要用户交互才能激活，等待首次点击/触摸...');
+                activateAudioOnFirstInteraction();
+            } else {
+                audioContextActivated = true;
+            }
             
             // 如果页面已在后台，启动保活
             if (document.hidden) {
+                console.log('⚠️ 页面初始化时已在后台，延迟启动保活系统...');
                 setTimeout(() => {
                     startHeartbeat();
-                    startAudioKeepAlive();
+                    if (audioContextActivated) {
+                        startAudioKeepAlive();
+                    }
                 }, 1000);
             }
             
             console.log('✅ 后台保活与通知系统已就绪');
             console.log('💡 调试命令: window.getBackgroundSystemStatus()');
+            console.log('💡 测试通知: window.sendBackgroundNotification("test", "测试", "这是一条测试消息", "")');
         }
         
     })();
