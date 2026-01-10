@@ -10650,21 +10650,43 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
   <link rel="icon" type="image/png" href="https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1756312261242_qdqqd_g0eriz.jpeg">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
   <!-- PWA 性能优化：延迟加载非关键脚本 -->
   <script>
-    // 立即启用交互，避免 iOS PWA 加载时无法点击
-    document.addEventListener('DOMContentLoaded', function() {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.touchAction = 'auto';
-    });
-    // 确保页面可立即交互
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() {
-        document.body.style.pointerEvents = 'auto';
-      });
-    } else {
-      document.body.style.pointerEvents = 'auto';
-    }
+    // ⚡ 关键优化：立即启用交互
+    (function() {
+      const enableInteraction = () => {
+        if (document.body) {
+          document.body.style.pointerEvents = 'auto';
+          document.body.style.touchAction = 'auto';
+        }
+      };
+      
+      // 立即执行
+      enableInteraction();
+      
+      // DOM 加载后再执行一次
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enableInteraction);
+      }
+      
+      // ⚡ iOS PWA 特殊优化：防止启动时卡顿
+      if (window.navigator.standalone) {
+        console.log('🚀 PWA 模式启动，启用快速加载优化');
+        
+        // 预加载 IndexedDB
+        if ('indexedDB' in window) {
+          setTimeout(() => {
+            try {
+              const request = indexedDB.open('test');
+              request.onsuccess = () => request.result.close();
+            } catch (e) {
+              console.log('IndexedDB 预加载跳过');
+            }
+          }, 0);
+        }
+      }
+    })();
   </script>
   <script src="https://unpkg.com/dexie/dist/dexie.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
@@ -25321,7 +25343,7 @@ if (lastUserMessage &&
                 let callHasBeenHandled = false;
                 let messageTimestamp = Date.now();
                 let newMessagesToRender = []; 
-                let notificationShown = false;
+                let notificationMessages = []; // 收集所有需要通知的消息
         
                 for (const msgData of consolidatedMessages) {
 if (msgData.type === 'thought_chain') {
@@ -27111,8 +27133,8 @@ break;
                             chat.unreadCount = (chat.unreadCount || 0) + 1;
                         }
                         
-                        // 🔔 修改通知逻辑：页面在后台时总是发送通知
-                        const shouldNotify = !notificationShown && (
+                        // 🔔 每条消息都单独发送通知
+                        const shouldNotify = (
                             !isViewingThisChat ||  // 不在查看这个聊天
                             document.hidden         // 或者页面在后台（锁屏/切换应用）
                         );
@@ -27130,16 +27152,11 @@ break;
                             }
                             const finalNotifText = chat.isGroup ? `${aiMessage.senderName}: ${notificationText}` : notificationText;
                             
-                            console.log('🔔 准备发送通知:', {
-                                chatName: chat.name,
-                                message: finalNotifText.substring(0, 40),
-                                isViewingThisChat,
-                                isPageHidden: document.hidden,
-                                shouldNotify
+                            // 延迟发送，避免多条通知同时弹出（每条延迟200ms）
+                            notificationMessages.push({
+                                text: finalNotifText.substring(0, 100) + (finalNotifText.length > 100 ? '...' : ''),
+                                delay: notificationMessages.length * 200
                             });
-                            
-                            showNotification(chatId, finalNotifText.substring(0, 40) + (finalNotifText.length > 40 ? '...' : ''));
-                            notificationShown = true;
                         }
         
  
@@ -27171,6 +27188,24 @@ break;
                         }
                     }
                 }        
+        
+                // 🔔 在所有消息处理完后，逐条发送通知（带延迟，避免叠加）
+                if (notificationMessages.length > 0) {
+                    console.log(`🔔 准备发送 ${notificationMessages.length} 条通知:`, {
+                        chatName: chat.name,
+                        count: notificationMessages.length,
+                        isViewingThisChat,
+                        isPageHidden: document.hidden
+                    });
+                    
+                    // 逐条发送通知，每条延迟 200ms
+                    notificationMessages.forEach((notif, index) => {
+                        setTimeout(() => {
+                            console.log(`🔔 发送第 ${index + 1}/${notificationMessages.length} 条通知:`, notif.text.substring(0, 40));
+                            showNotification(chatId, notif.text);
+                        }, notif.delay);
+                    });
+                }
         
                 if (callHasBeenHandled && videoCallState.isGroupCall) {
                     videoCallState.isAwaitingResponse = false;
