@@ -71219,51 +71219,66 @@ SVG要求（重要：必须是像素风格）：
                 };
             }
 
-            // AI实时分析视频（使用新的视觉调用间隔系统）
-            async function aiWatchVideo() {
+            // 第一层：截图层（只截图，不调用API）
+            function captureFrameOnly() {
+                if (!isWatching) return;
+                // 只截图并缓存，不调用任何API
+                captureVideoFrame();
+            }
+            
+            // 第二层：判断层（检查是否可以调用视觉API）
+            async function tryVisualCall() {
+                if (!isWatching) return;
+                
+                const visualCheck = canCallVisualAPI();
+                
+                if (!visualCheck.allowed) {
+                    // 不允许调用，直接返回，不执行任何API调用
+                    if (visualCheck.reason === 'cooldown') {
+                        console.log(`视觉调用冷却中，还需等待 ${Math.ceil(visualCheck.remaining)} 秒`);
+                    }
+                    return;
+                }
+                
+                // 允许调用：进入第三层
+                await callVisualAI(visualCheck.triggers);
+            }
+            
+            // 第三层：视觉API调用（唯一入口，带图片的调用）
+            async function callVisualAI(triggers) {
                 if (!isWatching) return;
                 
                 const title = getCurrentVideoTitle();
                 currentVideoTitle = title;
                 
-                // 持续缓存截图（但不立即发送）
-                captureVideoFrame();
+                // 从缓存中筛选关键帧
+                const keyFrames = await selectKeyFrames();
                 
-                // 检查是否可以调用视觉API
-                const visualCheck = canCallVisualAPI();
-                
-                if (visualCheck.allowed) {
-                    // 允许视觉调用：从缓存中筛选关键帧
-                    const keyFrames = await selectKeyFrames();
-                    
-                    if (keyFrames.length > 0) {
-                        // 更新最后调用时间
-                        lastVisualCallTime = Date.now();
-                        
-                        // 清空缓存（已使用）
-                        frameCache = [];
-                        
-                        // 使用视觉调用分析
-                        const analysis = await analyzeVideoFrame(keyFrames, title, true);
-                        
-                        // 显示AI评论（带图片）
-                        addChatMessage('ai', analysis.text, analysis.frameData);
-                        
-                        console.log(`视觉调用成功，触发条件: ${visualCheck.triggers.join(', ')}`);
-                    } else {
-                        // 没有关键帧，使用文本调用
-                        const analysis = await analyzeVideoFrame(null, title, false);
-                        addChatMessage('ai', analysis.text, null);
-                    }
-                } else {
-                    // 不允许视觉调用：使用文本调用
-                    const analysis = await analyzeVideoFrame(null, title, false);
-                    addChatMessage('ai', analysis.text, null);
-                    
-                    if (visualCheck.reason === 'cooldown') {
-                        console.log(`视觉调用冷却中，还需等待 ${Math.ceil(visualCheck.remaining)} 秒`);
-                    }
+                if (keyFrames.length === 0) {
+                    console.log('没有关键帧，跳过视觉调用');
+                    return;
                 }
+                
+                // 更新最后调用时间
+                lastVisualCallTime = Date.now();
+                
+                // 清空缓存（已使用）
+                frameCache = [];
+                
+                // 使用视觉调用分析（这是唯一带图片的API调用入口）
+                const analysis = await analyzeVideoFrame(keyFrames, title, true);
+                
+                // 显示AI评论（带图片）
+                addChatMessage('ai', analysis.text, analysis.frameData);
+                
+                console.log(`视觉调用成功，触发条件: ${triggers.join(', ')}`);
+            }
+            
+            // 文本API调用（用于用户主动发送消息，不是自动调用）
+            async function callTextAI(userMessage) {
+                const title = getCurrentVideoTitle();
+                const analysis = await analyzeVideoFrame(null, title, false);
+                return analysis;
             }
 
             // 读取视觉调用间隔配置
@@ -71338,14 +71353,28 @@ SVG要求（重要：必须是像素风格）：
                         addChatMessage('system', `已切换到「${character.name}」模式，开始陪看《${getCurrentVideoTitle()}》～视觉调用间隔: ${visualInterval}秒`);
                     }
                     
-                    // 每5秒分析一次（但视觉调用受间隔限制）
-                    watchInterval = setInterval(aiWatchVideo, 5000);
-                    // 立即分析一次
-                    aiWatchVideo();
+                    // 第一层：每2秒截图一次（只截图，不调用API）
+                    const captureInterval = setInterval(captureFrameOnly, 2000);
+                    
+                    // 第二层：每5秒检查一次是否可以调用视觉API（但实际调用受间隔限制）
+                    watchInterval = setInterval(tryVisualCall, 5000);
+                    
+                    // 立即执行一次截图
+                    captureFrameOnly();
+                    
+                    // 立即检查一次是否可以调用
+                    tryVisualCall();
+                    
+                    // 保存captureInterval以便停止时清理
+                    window._captureInterval = captureInterval;
                 } else {
                     aiWatchBtn.textContent = '🤖 开始AI陪看';
                     aiWatchBtn.style.backgroundColor = '#28a745';
                     clearInterval(watchInterval);
+                    if (window._captureInterval) {
+                        clearInterval(window._captureInterval);
+                        window._captureInterval = null;
+                    }
                     frameCache = []; // 清空缓存
                     addChatMessage('system', 'AI陪看已停止');
                 }
