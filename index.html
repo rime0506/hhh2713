@@ -24111,7 +24111,7 @@ ${linkedContents}
                          
                          // 如果有截图，将其添加到最近一条用户消息中
                          // 注意：我们直接修改 messagesPayload 的最后一条消息，或者追加一条系统提示（带图片）
-                         if (frameData) {
+                         if (frameData && Array.isArray(messagesPayload) && messagesPayload.length > 0) {
                              console.log('【观影室】成功截取视频画面，正在注入...');
                              // 查找最后一条用户消息
                              const lastUserMsgIndex = messagesPayload.findLastIndex(m => m.role === 'user');
@@ -24141,6 +24141,10 @@ ${linkedContents}
                                      ]
                                  });
                              }
+                         } else if (frameData) {
+                             // messagesPayload 还未初始化，稍后会处理
+                             console.log('【观影室】检测到视频画面，但消息列表未初始化，将在后续步骤中处理。');
+                             videoContext += `\n- **画面感知**: 当前正在观看视频，请根据标题和剧情进行互动。`;
                          } else {
                              videoContext += `\n- **画面感知**: 当前无法截取画面（可能是版权受限的在线视频），请主要依赖标题和剧情常识进行互动。`;
                          }
@@ -25445,6 +25449,52 @@ messagesPayload = historySlice.map(msg => {
                         }            
                     }
                 }           
+            
+                    // 【观影室修复】在 messagesPayload 初始化后处理视频截图
+                    if (window.screeningRoomContext && window.screeningRoomContext.isWatching) {
+                        const ctx = window.screeningRoomContext.getContext();
+                        const frameData = window.screeningRoomContext.captureFrame();
+                        
+                        if (frameData && Array.isArray(messagesPayload) && messagesPayload.length > 0) {
+                            console.log('【观影室】在 messagesPayload 初始化后注入视频画面...');
+                            
+                            // 过滤掉 null 值
+                            messagesPayload = messagesPayload.filter(Boolean);
+                            
+                            // 查找最后一条用户消息
+                            const lastUserMsgIndex = messagesPayload.findLastIndex(m => m.role === 'user');
+                            if (lastUserMsgIndex !== -1) {
+                                const originalContent = messagesPayload[lastUserMsgIndex].content;
+                                // 如果原来是字符串，转换为数组
+                                if (typeof originalContent === 'string') {
+                                    messagesPayload[lastUserMsgIndex].content = [
+                                        { type: 'text', text: originalContent },
+                                        { type: 'image_url', image_url: { url: frameData } }
+                                    ];
+                                } else if (Array.isArray(originalContent)) {
+                                    // 如果已经是数组，检查是否已有图片，避免重复添加
+                                    const hasImage = originalContent.some(part => part.type === 'image_url');
+                                    if (!hasImage) {
+                                        messagesPayload[lastUserMsgIndex].content.push({
+                                            type: 'image_url',
+                                            image_url: { url: frameData }
+                                        });
+                                    }
+                                }
+                                console.log('【观影室】✅ 成功将视频画面添加到最后一条用户消息');
+                            } else {
+                                // 如果没有用户消息，则作为单独的一条消息插入
+                                messagesPayload.push({
+                                    role: 'user',
+                                    content: [
+                                        { type: 'text', text: '[系统提示：这是用户当前看到的视频画面]' },
+                                        { type: 'image_url', image_url: { url: frameData } }
+                                    ]
+                                });
+                                console.log('【观影室】✅ 将视频画面作为新消息添加');
+                            }
+                        }
+                    }
             
                     let  isGemini = proxyUrl === GEMINI_API_URL;
                     let geminiConfig = toGeminiRequestData(model,apiKey,systemPrompt, messagesPayload)
