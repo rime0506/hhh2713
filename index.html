@@ -20596,48 +20596,66 @@ async function generateNovelAIImage() {
             const chat = state.chats[chatId];
             if (!chat) return;
             
+            const avatar = chat.settings.aiAvatar || chat.settings.groupAvatar || defaultAvatar;
+            const chatName = chat.name;
+            
             // 检查页面是否在后台
             const isBackground = document.hidden;
             
-            // 如果在后台且有通知权限，使用浏览器原生通知
-            if (isBackground && 'Notification' in window && Notification.permission === 'granted') {
-                const avatar = chat.settings.aiAvatar || chat.settings.groupAvatar || defaultAvatar;
-                const chatName = chat.name;
+            console.log(`🔔 showNotification 被调用:`, {
+                chatName,
+                messagePreview: messageContent.slice(0, 50),
+                isBackground,
+                hasNotificationAPI: 'Notification' in window,
+                permission: typeof Notification !== 'undefined' ? Notification.permission : 'N/A'
+            });
+            
+            // 🔔 后台通知：使用新的后台通知系统
+            if (isBackground) {
+                console.log('📱 页面在后台，准备发送系统通知...');
                 
-                // 尝试通过 Service Worker 发送通知
-                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'SHOW_NOTIFICATION',
-                        data: {
-                            title: chatName,
-                            body: messageContent,
-                            icon: avatar,
-                            tag: `chat-${chatId}`,
-                            data: { chatId: chatId }
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    // 使用新的后台通知系统（带队列和心跳管理）
+                    if (typeof window.sendBackgroundNotification === 'function') {
+                        console.log('✅ 使用后台通知系统发送通知');
+                        window.sendBackgroundNotification(chatId, chatName, messageContent, avatar);
+                    } else {
+                        // 降级方案：直接发送通知
+                        console.log('⚠️ 后台通知系统未就绪，使用降级方案');
+                        try {
+                            const notification = new Notification(chatName, {
+                                body: messageContent.length > 80 ? messageContent.slice(0, 80) + '...' : messageContent,
+                                icon: avatar,
+                                tag: `chat-${chatId}`,
+                                requireInteraction: false,
+                                data: { chatId: chatId }
+                            });
+                            
+                            notification.onclick = function() {
+                                window.focus();
+                                if (typeof openChat === 'function') {
+                                    openChat(chatId);
+                                }
+                                notification.close();
+                            };
+                            
+                            setTimeout(() => notification.close(), 5000);
+                            console.log('✅ 通知已通过降级方案发送');
+                        } catch (error) {
+                            console.error('❌ 发送后台通知失败:', error);
                         }
-                    });
-                } else {
-                    // 直接使用 Notification API
-                    const notification = new Notification(chatName, {
-                        body: messageContent,
-                        icon: avatar,
-                        tag: `chat-${chatId}`,
-                        badge: '/icon.png',
-                        requireInteraction: false,
-                        data: { chatId: chatId }
-                    });
+                    }
                     
-                    notification.onclick = function() {
-                        window.focus();
-                        if (typeof openChat === 'function') {
-                            openChat(chatId);
-                        }
-                        notification.close();
-                    };
+                    updateBackButtonUnreadCount();
+                    return;
+                } else {
+                    console.warn('⚠️ 后台但通知权限未授予', {
+                        hasAPI: 'Notification' in window,
+                        permission: typeof Notification !== 'undefined' ? Notification.permission : 'N/A'
+                    });
                 }
-                
-                updateBackButtonUnreadCount();
-                return;
+            } else {
+                console.log('📱 页面在前台，使用页内通知栏');
             }
             
             // 前台通知：显示原有的通知栏
