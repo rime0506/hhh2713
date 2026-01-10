@@ -11910,6 +11910,7 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           <div style="display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
             <input type="text" id="ai-chat-input" placeholder="和AI聊聊剧情..." style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
             <button id="ai-chat-send-btn" style="padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">发送</button>
+            <button id="ai-chat-receive-btn" style="padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; min-width: 100px;">🎬 接收回复</button>
           </div>
         </div>
       </div>
@@ -71799,7 +71800,13 @@ SVG要求（重要：必须是像素风格）：
 
                 addChatMessage('user', text);
                 aiChatInput.value = '';
-
+                
+                // 只发送消息，不立即获取回复
+                addChatMessage('system', '消息已发送，点击"接收回复"按钮获取AI的回应');
+            }
+            
+            // 新增：接收AI回复函数
+            async function receiveAIReply() {
                 const character = characterProfiles[currentCharacter];
                 if (!character) {
                     addChatMessage('ai', '角色信息加载中，请稍候...');
@@ -71811,23 +71818,31 @@ SVG要求（重要：必须是像素风格）：
                 // 如果没有配置API，使用模拟回复
                 if (!apiConfig.proxyUrl || !apiConfig.apiKey || !apiConfig.model) {
                     setTimeout(() => {
-                        const replies = [
-                            '我也有同感！',
-                            '这个想法不错～',
-                            '继续看下去，应该会有更多惊喜！',
-                            '嗯嗯，我明白了',
-                            '说得对！'
+                        const mockReplies = [
+                            ['我也有同感！', '这段剧情真的很精彩', '让我们继续看下去吧'],
+                            ['这个想法不错～', '我也想到了类似的内容', '期待后续的发展'],
+                            ['说得对！', '我也注意到了这个细节', '剧情发展越来越有趣了']
                         ];
-                        const reply = replies[Math.floor(Math.random() * replies.length)];
-                        addChatMessage('ai', reply);
-                    }, 1000);
+                        const replies = mockReplies[Math.floor(Math.random() * mockReplies.length)];
+                        
+                        // 逐条发送回复（每条延迟300ms）
+                        replies.forEach((reply, index) => {
+                            setTimeout(() => {
+                                addChatMessage('ai', reply);
+                            }, index * 300);
+                        });
+                    }, 500);
                     return;
                 }
 
                 try {
+                    // 显示加载提示
+                    addChatMessage('system', 'AI正在思考回复...');
+                    
                     // 获取聊天历史（最近5条）
                     const recentMessages = Array.from(aiChatMessages.querySelectorAll('.ai-chat-message'))
-                        .slice(-5)
+                        .filter(msg => !msg.classList.contains('system')) // 排除系统消息
+                        .slice(-6) // 多取一条，因为包含了"正在思考"
                         .map(msg => {
                             const isUser = msg.classList.contains('user');
                             return {
@@ -71837,16 +71852,18 @@ SVG要求（重要：必须是像素风格）：
                         });
 
                     // 构建消息
+                    const systemPrompt = character.systemPrompt + 
+                        `\n\n当前正在观看的视频是：《${getCurrentVideoTitle()}》。\n` +
+                        `请用${character.name}的风格，根据用户的消息和剧情，一次发送 2-4 条回复消息。\n` +
+                        `每条消息要独立成句，不要用序号。返回格式为 JSON 数组：\n` +
+                        `[{"type": "text", "content": "第一条消息内容"}, {"type": "text", "content": "第二条消息内容"}]`;
+                    
                     const messages = [
                         {
                             role: 'system',
-                            content: character.systemPrompt + `\n\n当前正在观看的视频是：《${getCurrentVideoTitle()}》。请根据用户的提问，用${character.name}的风格回复。`
+                            content: systemPrompt
                         },
-                        ...recentMessages,
-                        {
-                            role: 'user',
-                            content: text
-                        }
+                        ...recentMessages.slice(0, -1) // 去掉"正在思考"那条
                     ];
 
                     // 调用AI API
@@ -71859,8 +71876,8 @@ SVG要求（重要：必须是像素风格）：
                         body: JSON.stringify({
                             model: apiConfig.model,
                             messages: messages,
-                            max_tokens: 200,
-                            temperature: 0.7
+                            max_tokens: 500,
+                            temperature: 0.8
                         })
                     });
 
@@ -71871,9 +71888,54 @@ SVG要求（重要：必须是像素风格）：
                     const data = await response.json();
                     const reply = data.choices?.[0]?.message?.content || '抱歉，我暂时无法回复...';
                     
-                    addChatMessage('ai', reply);
+                    // 移除"正在思考"提示
+                    const systemMessages = aiChatMessages.querySelectorAll('.ai-chat-message.system');
+                    systemMessages.forEach(msg => {
+                        if (msg.textContent.includes('正在思考')) {
+                            msg.remove();
+                        }
+                    });
+                    
+                    // 尝试解析 JSON 数组格式的回复
+                    let replies = [];
+                    try {
+                        // 尝试提取 JSON 数组
+                        const jsonMatch = reply.match(/\[[\s\S]*\]/);
+                        if (jsonMatch) {
+                            const parsed = JSON.parse(jsonMatch[0]);
+                            if (Array.isArray(parsed)) {
+                                replies = parsed.map(item => item.content || item.message || String(item)).filter(Boolean);
+                            }
+                        }
+                    } catch (e) {
+                        console.log('不是JSON格式，按普通文本处理');
+                    }
+                    
+                    // 如果解析失败或为空，按换行符分割或直接使用
+                    if (replies.length === 0) {
+                        if (reply.includes('\n')) {
+                            replies = reply.split('\n').map(r => r.trim()).filter(Boolean);
+                        } else {
+                            replies = [reply];
+                        }
+                    }
+                    
+                    // 逐条发送回复（每条延迟200ms）
+                    replies.forEach((replyText, index) => {
+                        setTimeout(() => {
+                            addChatMessage('ai', replyText);
+                        }, index * 200);
+                    });
+                    
                 } catch (error) {
                     console.error('AI API调用失败:', error);
+                    // 移除"正在思考"提示
+                    const systemMessages = aiChatMessages.querySelectorAll('.ai-chat-message.system');
+                    systemMessages.forEach(msg => {
+                        if (msg.textContent.includes('正在思考')) {
+                            msg.remove();
+                        }
+                    });
                     addChatMessage('ai', '抱歉，AI服务暂时不可用，请检查API配置。');
                 }
             }
@@ -71892,6 +71954,12 @@ SVG要求（重要：必须是像素风格）：
 
             if (aiChatSendBtn) {
                 aiChatSendBtn.addEventListener('click', sendUserMessage);
+            }
+            
+            // 新增：绑定"接收回复"按钮
+            const aiChatReceiveBtn = document.getElementById('ai-chat-receive-btn');
+            if (aiChatReceiveBtn) {
+                aiChatReceiveBtn.addEventListener('click', receiveAIReply);
             }
 
             if (aiChatInput) {
