@@ -71805,6 +71805,61 @@ SVG要求（重要：必须是像素风格）：
                 addChatMessage('system', '消息已发送，点击"接收回复"按钮获取AI的回应');
             }
             
+            // 新增：过滤思维链的函数（兜底处理）
+            function stripThinking(text) {
+                if (!text || typeof text !== 'string') return text;
+                
+                return text
+                    // 移除 XML 标签格式的思维链
+                    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+                    .replace(/<analysis>[\s\S]*?<\/analysis>/gi, '')
+                    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+                    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+                    // 移除 JSON 格式的思维链字段
+                    .replace(/"thinking":\s*"[^"]*"/gi, '')
+                    .replace(/"reasoning":\s*"[^"]*"/gi, '')
+                    .replace(/"analysis":\s*"[^"]*"/gi, '')
+                    // 移除常见的思维链前缀
+                    .replace(/^分析[：:]\s*/gm, '')
+                    .replace(/^思考[：:]\s*/gm, '')
+                    .replace(/^推理[：:]\s*/gm, '')
+                    .replace(/^策略[：:]\s*/gm, '')
+                    // 移除多余空白
+                    .trim();
+            }
+            
+            // 新增：对齐聊天页面的响应解析逻辑
+            function extractResponseText(data) {
+                // 优先使用 choices[0].message.content（标准 OpenAI 格式）
+                if (data.choices && Array.isArray(data.choices)) {
+                    const choice = data.choices[0];
+                    if (choice && choice.message && choice.message.content) {
+                        return choice.message.content;
+                    }
+                }
+                
+                // Gemini 格式
+                if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+                    const candidate = data.candidates[0];
+                    if (candidate.content && candidate.content.parts) {
+                        return candidate.content.parts[0].text;
+                    }
+                }
+                
+                // 其他格式的兜底
+                if (data.output_text) {
+                    return data.output_text;
+                }
+                
+                if (data.response && data.response.output_text) {
+                    return data.response.output_text;
+                }
+                
+                // 如果都没有，返回空字符串（不要返回整个对象）
+                console.warn('无法从响应中提取文本内容，响应格式:', data);
+                return '';
+            }
+            
             // 新增：接收AI回复函数
             async function receiveAIReply() {
                 const character = characterProfiles[currentCharacter];
@@ -71851,17 +71906,19 @@ SVG要求（重要：必须是像素风格）：
                             };
                         });
 
-                    // 构建消息
+                    // 构建消息 - 明确禁止思维链
                     const systemPrompt = character.systemPrompt + 
-                        `\n\n当前正在观看的视频是：《${getCurrentVideoTitle()}》。\n` +
-                        `请用${character.name}的风格，根据用户的消息和剧情，一次回复2-4条消息。\n\n` +
-                        `重要：请直接返回对话消息，不要返回思维链或分析内容！\n` +
+                        `\n\n当前正在观看的视频是：《${getCurrentVideoTitle()}》。\n\n` +
+                        `【重要约束】\n` +
+                        `你只需要输出最终角色台词，用2-4条简短消息回复。\n` +
+                        `禁止输出任何分析、推理、思考过程、解释性文字。\n` +
+                        `禁止使用 JSON 格式、思维链格式或任何结构化格式。\n` +
                         `每条消息之间用换行符分隔，每条消息要独立成句。\n\n` +
-                        `例如：\n` +
+                        `示例格式：\n` +
                         `确实有点冲动呢\n` +
                         `不过也能理解他当时的心情\n` +
                         `看看后续会怎么发展吧\n\n` +
-                        `现在请回复用户的消息：`;
+                        `现在请用${character.name}的风格直接回复用户的消息：`;
                     
                     const messages = [
                         {
@@ -71891,7 +71948,18 @@ SVG要求（重要：必须是像素风格）：
                     }
 
                     const data = await response.json();
-                    let reply = data.choices?.[0]?.message?.content || '抱歉，我暂时无法回复...';
+                    
+                    // 🔥 关键：对齐聊天页面的解析逻辑，只提取最终文本
+                    let reply = extractResponseText(data);
+                    
+                    if (!reply || reply.trim() === '') {
+                        throw new Error('AI返回了空内容');
+                    }
+                    
+                    // 🔥 兜底：过滤思维链标签
+                    reply = stripThinking(reply);
+                    
+                    console.log('AI原始回复:', reply);
                     
                     // 移除"正在思考"提示
                     const systemMessages = aiChatMessages.querySelectorAll('.ai-chat-message.system');
@@ -71900,8 +71968,6 @@ SVG要求（重要：必须是像素风格）：
                             msg.remove();
                         }
                     });
-                    
-                    console.log('AI原始回复:', reply);
                     
                     // 简化解析：直接按换行符分割
                     let replies = reply
