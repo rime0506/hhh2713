@@ -27110,7 +27110,14 @@ break;
                        if (!isViewingThisChat) {
                             chat.unreadCount = (chat.unreadCount || 0) + 1;
                         }
-                        if (!isViewingThisChat && !notificationShown) {
+                        
+                        // 🔔 修改通知逻辑：页面在后台时总是发送通知
+                        const shouldNotify = !notificationShown && (
+                            !isViewingThisChat ||  // 不在查看这个聊天
+                            document.hidden         // 或者页面在后台（锁屏/切换应用）
+                        );
+                        
+                        if (shouldNotify) {
                             let notificationText;
                             switch (aiMessage.type) {
                                 case 'transfer': notificationText = `[收到一笔转账]`; break;
@@ -27122,6 +27129,15 @@ break;
                                 default: notificationText = String(aiMessage.content || '');
                             }
                             const finalNotifText = chat.isGroup ? `${aiMessage.senderName}: ${notificationText}` : notificationText;
+                            
+                            console.log('🔔 准备发送通知:', {
+                                chatName: chat.name,
+                                message: finalNotifText.substring(0, 40),
+                                isViewingThisChat,
+                                isPageHidden: document.hidden,
+                                shouldNotify
+                            });
+                            
                             showNotification(chatId, finalNotifText.substring(0, 40) + (finalNotifText.length > 40 ? '...' : ''));
                             notificationShown = true;
                         }
