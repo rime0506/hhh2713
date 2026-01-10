@@ -10705,52 +10705,59 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
         
         /* 悬浮小按钮 */
         #floating-chat-mini-btn {
-            position: fixed;
-            width: 56px;
-            height: 56px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9998;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            position: fixed !important;
+            width: 56px !important;
+            height: 56px !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            font-size: 24px !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 10500 !important; /* 超高优先级，确保在所有元素之上 */
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+            pointer-events: auto !important; /* 确保可点击 */
         }
         
         #floating-chat-mini-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6) !important;
         }
         
         #floating-chat-mini-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.95) !important;
         }
         
         /* 最小化按钮 */
         #floating-chat-minimize-btn {
-            position: absolute;
-            top: 5px;
-            right: 45px;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 10002;
-            color: var(--text-primary);
-            font-weight: bold;
-            width: 30px;
-            height: 30px;
-            text-align: center;
-            line-height: 30px;
-            transition: all 0.2s;
+            position: absolute !important;
+            top: 5px !important;
+            right: 45px !important;
+            font-size: 20px !important;
+            cursor: pointer !important;
+            z-index: 10002 !important;
+            color: var(--text-primary) !important;
+            font-weight: bold !important;
+            width: 30px !important;
+            height: 30px !important;
+            text-align: center !important;
+            line-height: 30px !important;
+            transition: all 0.2s !important;
+            pointer-events: auto !important; /* 确保可点击 */
+            user-select: none !important;
         }
         
         #floating-chat-minimize-btn:hover {
-            transform: scale(1.2);
-            color: #667eea;
+            transform: scale(1.2) !important;
+            color: #667eea !important;
+        }
+        
+        #floating-chat-minimize-btn:active {
+            transform: scale(0.9) !important;
         }
         
         /* ========== CSS 伪全屏方案 ========== */
@@ -12242,8 +12249,8 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           </select></div>
         <hr style="margin: 30px 0; opacity: 0.3;">
         <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;"data-lang-key="apiPerformanceSettings"data-lang-key="apiPerformanceSettings">性能与显示设置</h3>
-        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;"> <label for="notification-permission-switch" style="margin-bottom: 0;"> 前台通知提醒 <p style="font-size: 12px; font-weight: normal; color: #999; margin-top: 5px;">
-              当 AI 回复完成且页面未聚焦时，发送系统通知提醒。仅在前台运行时有效，不是后台推送。需要 iOS 16.4+ 并添加到主屏幕使用。 </p> </label> <label class="toggle-switch"> <input type="checkbox" id="notification-permission-switch"> <span class="slider"></span> </label> </div>
+        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;"> <label for="notification-permission-switch" style="margin-bottom: 0;"> 后台通知与保活 <p style="font-size: 12px; font-weight: normal; color: #999; margin-top: 5px;">
+              开启后，当页面切到后台时将通过静音音频和心跳保持运行，并发送通知。需要浏览器授权通知权限。 </p> </label> <label class="toggle-switch"> <input type="checkbox" id="notification-permission-switch"> <span class="slider"></span> </label> </div>
         <div id="notification-status-display" style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 8px; font-size: 13px; color: #666; display: none;">
             <div id="notification-status-text">通知状态：未授权</div>
             <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
@@ -23413,10 +23420,16 @@ if (lastMessage && (msg.timestamp - lastMessage.timestamp > 600000)) {
                                     replyText = msg.meaning;
                                 }
                                 
+                                // 获取头像URL
+                                let avatarUrl = '🤖';
+                                if (chat.settings && chat.settings.aiAvatar) {
+                                    avatarUrl = chat.settings.aiAvatar;
+                                }
+                                
                                 console.log('【前台通知】AI 回复内容提取:', replyText ? replyText.substring(0, 50) + '...' : '空内容');
                                 
                                 if (replyText && replyText.trim()) {
-                                    notifyAIReply(replyText.trim(), chat.name || 'AI');
+                                    notifyAIReply(replyText.trim(), chat.name || 'AI', chat.id, avatarUrl);
                                 } else {
                                     console.log('【前台通知】消息内容为空，跳过通知');
                                 }
@@ -69658,67 +69671,49 @@ SVG要求（重要：必须是像素风格）：
      * 显示 AI 回复通知
      * @param {string} text - AI 回复的文本内容
      * @param {string} chatName - 聊天对象名称
+     * @param {string} chatId - 聊天ID（可选）
+     * @param {string} avatar - 头像（可选）
      */
-    function notifyAIReply(text, chatName = 'AI') {
-        console.log('【前台通知】开始检查通知条件...');
-        console.log('通知权限:', Notification.permission);
-        console.log('页面聚焦:', document.hasFocus());
-        console.log('用户正在输入:', userIsTyping);
-        console.log('页面可见:', pageVisible);
+    function notifyAIReply(text, chatName = 'AI', chatId = 'unknown', avatar = '🤖') {
+        console.log('【通知系统】收到AI回复通知请求...');
+        
+        // 使用新的后台通知系统
+        if (window.sendBackgroundNotification) {
+            window.sendBackgroundNotification(chatId, chatName, text, avatar);
+            return;
+        }
+        
+        // 降级处理（如果后台系统未加载）
+        console.log('【通知系统】后台系统未就绪，尝试直接发送...');
         
         // 检查通知权限
         if (Notification.permission !== 'granted') {
-            console.log('【前台通知】通知权限未授予，跳过通知');
+            console.log('【通知系统】通知权限未授予，跳过通知');
             return;
         }
-        
-        // 检查页面可见性（如果页面不可见，不发送通知）
-        if (!pageVisible) {
-            console.log('【前台通知】页面不可见，跳过通知');
-            return;
-        }
-        
-        // 检查用户是否正在输入（如果用户正在输入，延迟发送通知）
-        if (userIsTyping) {
-            console.log('【前台通知】用户正在输入，延迟 1 秒后重试');
-            setTimeout(() => {
-                notifyAIReply(text, chatName);
-            }, 1000);
-            return;
-        }
-        
-        // 注意：移除了 document.hasFocus() 检查
-        // 因为即使页面聚焦，用户也可能在做其他事情，应该收到通知
         
         // 创建通知
         try {
-            const notificationOptions = {
+            const notification = new Notification(chatName, {
                 body: text.length > 60 ? text.slice(0, 60) + '...' : text,
-                tag: 'ai-reply', // 使用 tag 避免重复通知
+                icon: avatar,
+                tag: `chat-${chatId}`,
                 requireInteraction: false,
                 silent: false
-            };
+            });
             
-            // 图标为可选，如果不存在可以不添加
-            // notificationOptions.icon = '/icon-192.png';
-            // notificationOptions.badge = '/icon-192.png';
-            
-            const notification = new Notification(`${chatName} 新回复`, notificationOptions);
-            
-            // 点击通知时聚焦页面
             notification.onclick = () => {
                 window.focus();
+                if (typeof openChat === 'function') {
+                    openChat(chatId);
+                }
                 notification.close();
             };
             
-            // 自动关闭通知（5秒后）
-            setTimeout(() => {
-                notification.close();
-            }, 5000);
-            
-            console.log('【前台通知】✅ 通知已成功发送');
+            setTimeout(() => notification.close(), 5000);
+            console.log('【通知系统】✅ 通知已成功发送 (降级模式)');
         } catch (error) {
-            console.error('【前台通知】❌ 发送通知失败:', error);
+            console.error('【通知系统】❌ 发送通知失败:', error);
         }
     }
     
@@ -69726,17 +69721,9 @@ SVG要求（重要：必须是像素风格）：
      * 显示系统通知（通用方法）
      */
     function showSystemNotification(title, body) {
-        if (Notification.permission !== 'granted') {
-            return;
-        }
-        
+        if (Notification.permission !== 'granted') return;
         try {
-            const notificationOptions = {
-                body: body,
-                tag: 'system-notification'
-            };
-            
-            new Notification(title, notificationOptions);
+            new Notification(title, { body: body, tag: 'system-notification' });
         } catch (error) {
             console.error('发送通知失败:', error);
         }
@@ -69751,19 +69738,48 @@ SVG要求（重要：必须是像素风格）：
     if (notificationSwitch) {
         notificationSwitch.addEventListener('change', (e) => {
             if (e.target.checked) {
-                // 开关打开时，请求权限
-                requestNotificationPermission();
+                // 开关打开时，请求权限并启动后台服务
+                requestNotificationPermission().then(() => {
+                    // 如果已授权，尝试启动后台保活
+                    if (Notification.permission === 'granted') {
+                        // 触发一次心跳来激活系统
+                        if (window.triggerHeartbeat) window.triggerHeartbeat();
+                        
+                        // 保存设置
+                        localStorage.setItem('enable_background_system', 'true');
+                    }
+                });
             } else {
-                // 开关关闭时，不执行任何操作（权限已授予后无法通过代码撤销）
+                // 开关关闭时，停止后台服务（如果有停止接口）
+                localStorage.setItem('enable_background_system', 'false');
                 updateNotificationButton();
             }
         });
     }
     
+    // 页面加载时检查保存的设置
+    window.addEventListener('load', () => {
+        const enabled = localStorage.getItem('enable_background_system') === 'true';
+        if (enabled && Notification.permission === 'granted') {
+            const switchEl = document.getElementById('notification-permission-switch');
+            if (switchEl) switchEl.checked = true;
+            
+            // 确保后台系统已启动
+            if (window.triggerHeartbeat) window.triggerHeartbeat();
+        }
+    });
+    
     // 绑定请求权限按钮事件
     const requestBtn = document.getElementById('notification-request-btn');
     if (requestBtn) {
-        requestBtn.addEventListener('click', requestNotificationPermission);
+        requestBtn.addEventListener('click', () => {
+            requestNotificationPermission().then(() => {
+                if (Notification.permission === 'granted') {
+                    localStorage.setItem('enable_background_system', 'true');
+                    if (window.triggerHeartbeat) window.triggerHeartbeat();
+                }
+            });
+        });
     }
     
     // 发送测试通知
@@ -69778,31 +69794,16 @@ SVG要求（重要：必须是像素风格）：
             return;
         }
         
-        try {
-            const notificationOptions = {
-                body: '这是一条测试通知。如果您看到这条消息，说明前台通知功能正常工作！',
-                tag: 'test-notification',
-                requireInteraction: false,
-                silent: false
-            };
-            
-            const notification = new Notification('前台通知测试', notificationOptions);
-            
-            // 点击通知时聚焦页面
-            notification.onclick = () => {
-                window.focus();
-                notification.close();
-            };
-            
-            // 自动关闭通知（5秒后）
-            setTimeout(() => {
-                notification.close();
-            }, 5000);
-            
-            console.log('测试通知已发送');
-        } catch (error) {
-            console.error('发送测试通知失败:', error);
-            alert('发送测试通知失败：' + error.message);
+        // 使用新的后台通知接口测试
+        if (window.sendBackgroundNotification) {
+            window.sendBackgroundNotification('test-chat', '测试通知', '这是一条测试通知。如果您看到这条消息，说明后台通知功能正常工作！', '🤖');
+        } else {
+            // 降级测试
+            try {
+                new Notification('测试通知', { body: '这是一条测试通知' });
+            } catch (e) {
+                alert('发送失败: ' + e.message);
+            }
         }
     }
     
@@ -69815,10 +69816,9 @@ SVG要求（重要：必须是像素风格）：
     // 页面加载时初始化
     window.addEventListener('load', () => {
         updateNotificationButton();
-        console.log('前台通知系统已初始化');
-        console.log('当前通知权限:', Notification.permission);
-        console.log('页面可见性:', !document.hidden);
+        console.log('通知系统已初始化');
     });
+
     
     // 当切换到 API 设置页面时，更新通知状态
     const originalShowScreen = window.showScreen;
@@ -69837,163 +69837,541 @@ SVG要求（重要：必须是像素风格）：
     
     // ========== 后台保活系统 ==========
     
-    // 1. 音频保活（静音音频播放）
+    // ========== 后台保活与通知系统（优化版：随机抖动 + 轻量心跳 + 系统唤醒）==========
+    
     (function() {
-        let audioContext = null;
-        let keepAliveSource = null;
-        let keepAliveAudio = null;
-        let isKeepAliveActive = false;
+        // ============================================
+        // 1. 全局状态管理
+        // ============================================
+        const BackgroundSystem = {
+            // 心跳配置
+            heartbeat: {
+                baseInterval: 30000,      // 基准心跳间隔：30秒
+                jitterRange: 10000,       // 随机抖动范围：±10秒
+                timeoutId: null,          // setTimeout ID
+                isRunning: false,         // 心跳是否运行中
+                lastBeat: Date.now(),     // 上次心跳时间
+                beatCount: 0              // 心跳计数
+            },
+            
+            // 音频保活
+            audio: {
+                context: null,
+                source: null,
+                gainNode: null,
+                isActive: false
+            },
+            
+            // 通知队列
+            notificationQueue: [],
+            
+            // 系统状态
+            state: {
+                isBackground: document.hidden,
+                lastActivity: Date.now(),
+                networkOnline: navigator.onLine
+            }
+        };
         
-        // 初始化音频上下文
-        function initAudioContext() {
+        // ============================================
+        // 2. 随机抖动的递归心跳（避免固定频率）
+        // ============================================
+        
+        /**
+         * 计算带随机抖动的下次心跳间隔
+         * @returns {number} 毫秒数
+         */
+        function getNextHeartbeatInterval() {
+            const { baseInterval, jitterRange } = BackgroundSystem.heartbeat;
+            // 生成 [baseInterval - jitterRange, baseInterval + jitterRange] 范围内的随机值
+            const jitter = Math.random() * jitterRange * 2 - jitterRange;
+            const interval = baseInterval + jitter;
+            return Math.max(15000, Math.min(60000, interval)); // 限制在 15-60 秒之间
+        }
+        
+        /**
+         * 执行一次心跳（极轻量级）
+         */
+        function performHeartbeat() {
+            const now = Date.now();
+            BackgroundSystem.heartbeat.lastBeat = now;
+            BackgroundSystem.heartbeat.beatCount++;
+            
+            // 📊 仅更新本地状态（不做重操作）
+            const state = {
+                timestamp: now,
+                isBackground: document.hidden,
+                beatCount: BackgroundSystem.heartbeat.beatCount,
+                networkOnline: navigator.onLine
+            };
+            
+            // 存储到 localStorage（轻量级持久化）
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                localStorage.setItem('app_heartbeat', JSON.stringify(state));
+            } catch (e) {
+                console.warn('心跳状态存储失败:', e);
+            }
+            
+            // 🔔 检查并发送待处理的通知
+            processNotificationQueue();
+            
+            // 📡 可选：使用 sendBeacon 向服务器报告（如果有后端）
+            // if (navigator.sendBeacon) {
+            //     navigator.sendBeacon('/api/heartbeat', JSON.stringify(state));
+            // }
+            
+            console.log(`💓 后台心跳 #${state.beatCount} | 下次间隔: ${getNextHeartbeatInterval() / 1000}秒`);
+            
+            // 📅 递归调度下次心跳
+            scheduleNextHeartbeat();
+        }
+        
+        /**
+         * 调度下次心跳（递归 setTimeout）
+         */
+        function scheduleNextHeartbeat() {
+            // 清除已有的定时器
+            if (BackgroundSystem.heartbeat.timeoutId) {
+                clearTimeout(BackgroundSystem.heartbeat.timeoutId);
+            }
+            
+            // 计算随机间隔
+            const interval = getNextHeartbeatInterval();
+            
+            // 递归调度
+            BackgroundSystem.heartbeat.timeoutId = setTimeout(() => {
+                performHeartbeat();
+            }, interval);
+        }
+        
+        /**
+         * 启动心跳系统
+         */
+        function startHeartbeat() {
+            if (BackgroundSystem.heartbeat.isRunning) {
+                console.log('心跳已在运行中');
+                return;
+            }
+            
+            BackgroundSystem.heartbeat.isRunning = true;
+            console.log('🚀 启动后台心跳系统（随机抖动模式）');
+            
+            // 立即执行第一次心跳
+            performHeartbeat();
+        }
+        
+        /**
+         * 停止心跳系统
+         */
+        function stopHeartbeat() {
+            if (!BackgroundSystem.heartbeat.isRunning) {
+                return;
+            }
+            
+            if (BackgroundSystem.heartbeat.timeoutId) {
+                clearTimeout(BackgroundSystem.heartbeat.timeoutId);
+                BackgroundSystem.heartbeat.timeoutId = null;
+            }
+            
+            BackgroundSystem.heartbeat.isRunning = false;
+            console.log('⏹️ 停止后台心跳系统');
+        }
+        
+        // ============================================
+        // 3. 音频保活（静音播放）
+        // ============================================
+        
+        /**
+         * 初始化音频上下文
+         */
+        function initAudioKeepAlive() {
+            if (BackgroundSystem.audio.context) {
+                return true;
+            }
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                BackgroundSystem.audio.context = new AudioContext();
+                
+                // 创建静音缓冲区（0.1秒）
+                const sampleRate = BackgroundSystem.audio.context.sampleRate;
+                const buffer = BackgroundSystem.audio.context.createBuffer(1, sampleRate * 0.1, sampleRate);
+                
+                // 创建循环播放的音频源
+                const source = BackgroundSystem.audio.context.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+                
+                // 增益节点（静音）
+                const gainNode = BackgroundSystem.audio.context.createGain();
+                gainNode.gain.value = 0;
+                
+                source.connect(gainNode);
+                gainNode.connect(BackgroundSystem.audio.context.destination);
+                
+                BackgroundSystem.audio.source = source;
+                BackgroundSystem.audio.gainNode = gainNode;
+                
+                console.log('✅ 音频上下文初始化成功');
                 return true;
             } catch (error) {
-                console.warn('无法创建AudioContext:', error);
+                console.warn('❌ 音频上下文初始化失败:', error);
                 return false;
             }
         }
         
-        // 创建静音音频源
-        function createSilentAudioSource() {
-            if (!audioContext) {
-                if (!initAudioContext()) {
-                    return null;
-                }
+        /**
+         * 启动音频保活
+         */
+        function startAudioKeepAlive() {
+            if (BackgroundSystem.audio.isActive) {
+                return;
+            }
+            
+            if (!initAudioKeepAlive()) {
+                return;
             }
             
             try {
-                // 创建一个极短的静音缓冲区（0.1秒）
-                const sampleRate = audioContext.sampleRate;
-                const buffer = audioContext.createBuffer(1, sampleRate * 0.1, sampleRate);
-                // 缓冲区已经是静音的（全0），不需要填充
+                const { context, source } = BackgroundSystem.audio;
                 
-                const source = audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.loop = true;
+                // 恢复被暂停的上下文
+                if (context.state === 'suspended') {
+                    context.resume();
+                }
                 
-                // 连接到静音节点（GainNode，增益为0）
-                const gainNode = audioContext.createGain();
-                gainNode.gain.value = 0; // 确保完全静音
-                source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                // 启动音频源
+                source.start(0);
+                BackgroundSystem.audio.isActive = true;
                 
-                return source;
+                console.log('🔊 音频保活已启动（静音模式）');
             } catch (error) {
-                console.error('创建静音音频源失败:', error);
-                return null;
+                console.warn('音频保活启动失败:', error);
             }
-
         }
         
-        // 启动音频保活
-        function startKeepAlive() {
-            if (isKeepAliveActive) {
+        /**
+         * 停止音频保活
+         */
+        function stopAudioKeepAlive() {
+            if (!BackgroundSystem.audio.isActive) {
                 return;
             }
             
-            console.log('启动音频保活');
-            
-            // 方法1: 使用Web Audio API（推荐）
-            if (!keepAliveSource) {
-                keepAliveSource = createSilentAudioSource();
-            }
-            
-            if (keepAliveSource && audioContext) {
-                try {
-                    // 如果上下文被暂停，恢复它
-                    if (audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
-                    keepAliveSource.start(0);
-                    isKeepAliveActive = true;
-                    console.log('Web Audio API保活已启动');
-                    return;
-                } catch (error) {
-                    console.warn('Web Audio API启动失败:', error);
-                    // 如果失败，尝试备用方案
+            try {
+                if (BackgroundSystem.audio.source) {
+                    BackgroundSystem.audio.source.stop();
+                    BackgroundSystem.audio.source = null;
                 }
-            }
-            
-            // 方法2: 使用Audio元素（备用方案）
-            if (!keepAliveAudio) {
-                keepAliveAudio = document.createElement('audio');
-                keepAliveAudio.loop = true;
-                keepAliveAudio.muted = true;
-                keepAliveAudio.volume = 0;
-                keepAliveAudio.preload = 'auto';
                 
-                // 创建一个极短的静音WAV文件（data URI）
-                // 这是一个1秒的静音WAV文件
-                const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-                keepAliveAudio.src = silentWav;
+                BackgroundSystem.audio.isActive = false;
+                console.log('🔇 音频保活已停止');
+            } catch (error) {
+                console.warn('停止音频保活失败:', error);
             }
-            
-            keepAliveAudio.play().then(() => {
-                isKeepAliveActive = true;
-                console.log('Audio元素保活已启动');
-            }).catch(err => {
-                console.warn('Audio元素播放失败:', err);
-                // 某些浏览器可能需要用户交互才能播放音频
-            });
         }
         
-        // 停止音频保活
-        function stopKeepAlive() {
-            if (!isKeepAliveActive) {
+        // ============================================
+        // 4. 通知队列管理
+        // ============================================
+        
+        /**
+         * 添加通知到队列（并立即发送）
+         * @param {string} chatId - 聊天ID
+         * @param {string} chatName - 聊天名称
+         * @param {string} message - 消息内容
+         * @param {string} avatar - 头像URL
+         * @param {boolean} immediate - 是否立即发送（默认true）
+         */
+        function enqueueNotification(chatId, chatName, message, avatar, immediate = true) {
+            const notification = {
+                chatId,
+                chatName,
+                message,
+                avatar,
+                timestamp: Date.now()
+            };
+            
+            // 如果要求立即发送，直接发送
+            if (immediate) {
+                console.log(`📬 立即发送后台通知: ${chatName}`);
+                sendNotification(notification);
+            } else {
+                // 否则加入队列，等待批量处理
+                BackgroundSystem.notificationQueue.push(notification);
+                console.log(`📬 通知已加入队列 (${BackgroundSystem.notificationQueue.length}条待发送)`);
+            }
+        }
+        
+        /**
+         * 发送单条通知
+         * @param {object} notif - 通知对象
+         */
+        function sendNotification(notif) {
+            // 检查通知权限
+            if (!('Notification' in window) || Notification.permission !== 'granted') {
+                console.warn('⚠️ 通知权限未授予，无法发送通知');
+                return false;
+            }
+            
+            try {
+                const notification = new Notification(notif.chatName, {
+                    body: notif.message.length > 80 ? notif.message.slice(0, 80) + '...' : notif.message,
+                    icon: notif.avatar,
+                    tag: `chat-${notif.chatId}`,
+                    requireInteraction: false,
+                    silent: false,
+                    data: { chatId: notif.chatId }
+                });
+                
+                // 点击通知时聚焦页面并打开聊天
+                notification.onclick = function() {
+                    window.focus();
+                    if (typeof openChat === 'function') {
+                        openChat(notif.chatId);
+                    }
+                    notification.close();
+                };
+                
+                // 5秒后自动关闭
+                setTimeout(() => notification.close(), 5000);
+                
+                console.log(`✅ 通知已发送: ${notif.chatName}`);
+                return true;
+            } catch (error) {
+                console.error('❌ 发送通知失败:', error);
+                return false;
+            }
+        }
+        
+        /**
+         * 处理通知队列（批量发送积压的通知）
+         */
+        function processNotificationQueue() {
+            if (BackgroundSystem.notificationQueue.length === 0) {
                 return;
             }
             
-            console.log('停止音频保活');
-            
-            // 停止Web Audio API源
-            if (keepAliveSource) {
-                try {
-                    keepAliveSource.stop();
-                    keepAliveSource = null;
-                } catch (error) {
-                    console.warn('停止音频源失败:', error);
-                }
+            // 检查通知权限
+            if (!('Notification' in window) || Notification.permission !== 'granted') {
+                console.warn('⚠️ 通知权限未授予，清空队列');
+                BackgroundSystem.notificationQueue = [];
+                return;
             }
             
-            // 停止Audio元素
-            if (keepAliveAudio) {
-                keepAliveAudio.pause();
-                keepAliveAudio.currentTime = 0;
-            }
+            // 批量发送通知（避免过度通知）
+            const maxNotifications = 3; // 最多一次发送3条
+            const toSend = BackgroundSystem.notificationQueue.splice(0, maxNotifications);
             
-            isKeepAliveActive = false;
+            console.log(`📮 批量发送 ${toSend.length} 条队列通知`);
+            
+            toSend.forEach(notif => {
+                sendNotification(notif);
+            });
+            
+            // 如果还有待发送的通知，记录日志
+            if (BackgroundSystem.notificationQueue.length > 0) {
+                console.log(`📬 还有 ${BackgroundSystem.notificationQueue.length} 条通知待发送`);
+            }
         }
         
-        // 页面可见性变化时控制音频播放
+        // ============================================
+        // 5. 系统事件监听（智能唤醒）
+        // ============================================
+        
+        /**
+         * 页面可见性变化（最重要的唤醒事件）
+         */
         document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                // 切换到后台时，启动音频保活
-                startKeepAlive();
+            const isNowBackground = document.hidden;
+            BackgroundSystem.state.isBackground = isNowBackground;
+            
+            if (isNowBackground) {
+                console.log('📱 页面切换到后台 - 启动保活系统');
+                
+                // 启动后台保活
+                startHeartbeat();
+                
+                // 尝试启动音频保活（可能需要用户交互才能激活）
+                setTimeout(() => {
+                    startAudioKeepAlive();
+                }, 100);
+                
             } else {
-                // 切换到前台时，停止音频保活
-                stopKeepAlive();
+                console.log('📱 页面切换到前台 - 停止保活系统');
+                
+                // 停止后台保活（节省资源）
+                stopHeartbeat();
+                stopAudioKeepAlive();
+                
+                // 清空通知队列（用户已回到页面）
+                BackgroundSystem.notificationQueue = [];
             }
         });
         
-        // 页面初始化
-        if (initAudioContext()) {
-            // 如果页面已隐藏，启动保活
-            if (document.hidden) {
-                // 延迟启动，确保页面完全加载
-                setTimeout(startKeepAlive, 1000);
+        /**
+         * 网络状态变化（唤醒事件）
+         */
+        window.addEventListener('online', function() {
+            console.log('🌐 网络已连接');
+            BackgroundSystem.state.networkOnline = true;
+            
+            // 网络恢复时，立即执行一次心跳
+            if (BackgroundSystem.heartbeat.isRunning) {
+                performHeartbeat();
             }
-        }
+        });
         
-        // 保存到全局，方便调试和控制
-        window.keepAlive = {
-            start: startKeepAlive,
-            stop: stopKeepAlive,
-            isActive: function() { return isKeepAliveActive; }
+        window.addEventListener('offline', function() {
+            console.log('🌐 网络已断开');
+            BackgroundSystem.state.networkOnline = false;
+        });
+        
+        /**
+         * 用户活动检测（触摸/点击/滚动）
+         */
+        ['touchstart', 'mousedown', 'scroll', 'keydown'].forEach(eventType => {
+            document.addEventListener(eventType, function() {
+                BackgroundSystem.state.lastActivity = Date.now();
+            }, { passive: true });
+        });
+        
+        /**
+         * 页面即将进入后台（pagehide / beforeunload）
+         */
+        window.addEventListener('pagehide', function(e) {
+            console.log('📤 页面即将隐藏');
+            
+            // 使用 sendBeacon 发送最后的心跳
+            if (navigator.sendBeacon && BackgroundSystem.heartbeat.isRunning) {
+                const state = {
+                    event: 'pagehide',
+                    timestamp: Date.now(),
+                    beatCount: BackgroundSystem.heartbeat.beatCount
+                };
+                
+                // navigator.sendBeacon('/api/heartbeat/pagehide', JSON.stringify(state));
+            }
+        }, false);
+        
+        // ============================================
+        // 6. 外部 API（供其他模块调用）
+        // ============================================
+        
+        /**
+         * 发送后台通知（外部调用 - 立即发送）
+         * @param {string} chatId - 聊天ID
+         * @param {string} chatName - 聊天名称
+         * @param {string} message - 消息内容
+         * @param {string} avatar - 头像URL
+         */
+        window.sendBackgroundNotification = function(chatId, chatName, message, avatar) {
+            // 立即发送通知（不管前台还是后台）
+            enqueueNotification(chatId, chatName, message, avatar, true);
         };
         
-        console.log('音频保活系统已初始化');
+        /**
+         * 手动触发心跳（用于调试）
+         */
+        window.triggerHeartbeat = function() {
+            performHeartbeat();
+        };
+        
+        /**
+         * 获取系统状态（用于调试）
+         */
+        window.getBackgroundSystemStatus = function() {
+            return {
+                heartbeat: {
+                    isRunning: BackgroundSystem.heartbeat.isRunning,
+                    beatCount: BackgroundSystem.heartbeat.beatCount,
+                    lastBeat: new Date(BackgroundSystem.heartbeat.lastBeat).toLocaleTimeString()
+                },
+                audio: {
+                    isActive: BackgroundSystem.audio.isActive
+                },
+                notifications: {
+                    queueLength: BackgroundSystem.notificationQueue.length
+                },
+                state: {
+                    isBackground: BackgroundSystem.state.isBackground,
+                    networkOnline: BackgroundSystem.state.networkOnline,
+                    lastActivity: new Date(BackgroundSystem.state.lastActivity).toLocaleTimeString()
+                }
+            };
+        };
+        
+        // ============================================
+        // 7. 初始化
+        // ============================================
+        
+        let audioContextActivated = false;
+        
+        // 用户首次交互时激活音频上下文
+        function activateAudioOnFirstInteraction() {
+            if (audioContextActivated) return;
+            
+            const activate = () => {
+                if (!audioContextActivated) {
+                    console.log('👆 检测到用户交互，激活音频上下文...');
+                    
+                    if (initAudioKeepAlive()) {
+                        audioContextActivated = true;
+                        console.log('✅ 音频上下文已激活');
+                        
+                        // 如果当前已在后台，立即启动保活
+                        if (document.hidden) {
+                            startAudioKeepAlive();
+                        }
+                        
+                        // 移除事件监听器
+                        ['touchstart', 'mousedown', 'click', 'keydown'].forEach(eventType => {
+                            document.removeEventListener(eventType, activate);
+                        });
+                    }
+                }
+            };
+            
+            // 监听首次用户交互
+            ['touchstart', 'mousedown', 'click', 'keydown'].forEach(eventType => {
+                document.addEventListener(eventType, activate, { once: true, passive: true });
+            });
+        }
+        
+        // 页面加载完成后初始化
+        if (document.readyState === 'complete') {
+            init();
+        } else {
+            window.addEventListener('load', init);
+        }
+        
+        function init() {
+            console.log('🚀 后台保活与通知系统初始化...');
+            
+            // 尝试初始化音频上下文（可能需要用户交互）
+            if (!initAudioKeepAlive()) {
+                console.log('⚠️ 音频上下文需要用户交互才能激活，等待首次点击/触摸...');
+                activateAudioOnFirstInteraction();
+            } else {
+                audioContextActivated = true;
+            }
+            
+            // 如果页面已在后台，启动保活
+            if (document.hidden) {
+                console.log('⚠️ 页面初始化时已在后台，延迟启动保活系统...');
+                setTimeout(() => {
+                    startHeartbeat();
+                    if (audioContextActivated) {
+                        startAudioKeepAlive();
+                    }
+                }, 1000);
+            }
+            
+            console.log('✅ 后台保活与通知系统已就绪');
+            console.log('💡 调试命令: window.getBackgroundSystemStatus()');
+            console.log('💡 测试通知: window.sendBackgroundNotification("test", "测试", "这是一条测试消息", "")');
+        }
+        
     })();
     
     // 2. 后台任务调度系统
@@ -72166,12 +72544,17 @@ SVG要求（重要：必须是像素风格）：
 
             function startDrag(e) {
                 // 如果点击的是按钮，不触发拖拽
-                if (e.target.id === 'floating-chat-close-btn' || 
-                    e.target.id === 'floating-chat-minimize-btn' ||
-                    e.target.closest('.header-actions')) {
+                const target = e.target;
+                if (target.id === 'floating-chat-close-btn' || 
+                    target.id === 'floating-chat-minimize-btn' ||
+                    target.closest('#floating-chat-close-btn') ||
+                    target.closest('#floating-chat-minimize-btn') ||
+                    target.closest('.header-actions')) {
+                    console.log('点击了按钮，不触发拖拽');
                     return;
                 }
 
+                console.log('开始拖拽');
                 isDragging = true;
                 
                 const touch = e.type === 'touchstart' ? e.touches[0] : e;
@@ -72225,40 +72608,65 @@ SVG要求（重要：必须是像素风格）：
 
             // ========== 最小化/展开功能 ==========
             function minimizeFloatingChat() {
+                console.log('开始最小化聊天窗口');
+                
+                // 获取窗口当前位置（在添加 minimized class 之前）
+                const rect = chatScreen.getBoundingClientRect();
+                console.log('窗口位置:', rect);
+                
+                // 添加最小化状态
                 chatScreen.classList.add('minimized');
                 
-                // 创建悬浮小按钮
+                // 创建或获取悬浮小按钮
                 let minBtn = document.getElementById('floating-chat-mini-btn');
                 if (!minBtn) {
                     minBtn = document.createElement('button');
                     minBtn.id = 'floating-chat-mini-btn';
                     minBtn.innerHTML = '💬';
                     minBtn.onclick = restoreFloatingChat;
+                    
+                    // 添加到 body 的最后，确保 z-index 生效
                     document.body.appendChild(minBtn);
+                    console.log('创建了新的悬浮球按钮');
                 }
                 
-                // 记录窗口位置，将小按钮放在相同位置
-                const rect = chatScreen.getBoundingClientRect();
-                minBtn.style.left = rect.right - 56 + 'px';
-                minBtn.style.top = rect.top + 'px';
-                minBtn.style.display = 'flex';
+                // 计算悬浮球位置（放在窗口右上角）
+                const btnLeft = rect.left + rect.width - 56;
+                const btnTop = rect.top;
                 
-                console.log('聊天窗口已最小化');
+                console.log('悬浮球位置:', btnLeft, btnTop);
+                
+                // 设置悬浮球位置和显示
+                minBtn.style.left = btnLeft + 'px';
+                minBtn.style.top = btnTop + 'px';
+                minBtn.style.display = 'flex';
+                minBtn.style.visibility = 'visible';
+                minBtn.style.opacity = '1';
+                
+                console.log('聊天窗口已最小化，悬浮球已显示');
             }
 
             function restoreFloatingChat() {
-                chatScreen.classList.remove('minimized');
+                console.log('开始恢复聊天窗口');
                 
                 const minBtn = document.getElementById('floating-chat-mini-btn');
                 if (minBtn) {
-                    // 将窗口位置设置为小按钮位置
+                    // 获取悬浮球位置
                     const rect = minBtn.getBoundingClientRect();
+                    console.log('悬浮球位置:', rect);
+                    
+                    // 将窗口位置设置为悬浮球位置
                     chatScreen.style.left = rect.left + 'px';
                     chatScreen.style.top = rect.top + 'px';
                     chatScreen.style.right = 'auto';
+                    chatScreen.style.bottom = 'auto';
                     
+                    // 隐藏悬浮球
                     minBtn.style.display = 'none';
                 }
+                
+                // 移除最小化状态
+                chatScreen.classList.remove('minimized');
                 
                 console.log('聊天窗口已恢复');
             }
@@ -72304,9 +72712,19 @@ SVG要求（重要：必须是像素风格）：
                         const closeBtn = document.createElement('div');
                         closeBtn.id = 'floating-chat-close-btn';
                         closeBtn.innerHTML = '×';
-                        closeBtn.style.cssText = 'position:absolute; top:5px; left:10px; font-size:24px; cursor:pointer; z-index:10002; color:var(--text-primary); font-weight:bold; width:30px; height:30px; text-align:center; line-height:30px;';
-                        closeBtn.onclick = toggleFloatingChat;
+                        closeBtn.title = '关闭';
+                        closeBtn.style.cssText = 'position:absolute; top:5px; left:10px; font-size:24px; cursor:pointer; z-index:10002; color:var(--text-primary); font-weight:bold; width:30px; height:30px; text-align:center; line-height:30px; user-select:none; pointer-events:auto;';
+                        
+                        // 添加点击事件，阻止冒泡
+                        closeBtn.addEventListener('click', function(e) {
+                            console.log('关闭按钮被点击');
+                            e.stopPropagation();
+                            e.preventDefault();
+                            toggleFloatingChat();
+                        });
+                        
                         chatScreen.appendChild(closeBtn);
+                        console.log('关闭按钮已添加');
                     }
                     
                     // 添加最小化按钮
@@ -72314,8 +72732,26 @@ SVG要求（重要：必须是像素风格）：
                         const minimizeBtn = document.createElement('div');
                         minimizeBtn.id = 'floating-chat-minimize-btn';
                         minimizeBtn.innerHTML = '−';
-                        minimizeBtn.onclick = minimizeFloatingChat;
+                        minimizeBtn.title = '最小化';
+                        
+                        // 添加点击事件，使用事件监听器而不是onclick
+                        minimizeBtn.addEventListener('click', function(e) {
+                            console.log('最小化按钮被点击');
+                            e.stopPropagation(); // 阻止事件冒泡
+                            e.preventDefault(); // 阻止默认行为
+                            minimizeFloatingChat();
+                        });
+                        
+                        // 添加触摸事件支持
+                        minimizeBtn.addEventListener('touchend', function(e) {
+                            console.log('最小化按钮被触摸');
+                            e.stopPropagation();
+                            e.preventDefault();
+                            minimizeFloatingChat();
+                        });
+                        
                         chatScreen.appendChild(minimizeBtn);
+                        console.log('最小化按钮已添加');
                     }
                     
                     // 初始化拖拽功能
