@@ -88,7 +88,7 @@
         @keyframes charge-breath { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .screen { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; pointer-events: none; }
         .screen.active { opacity: 1; visibility: visible; z-index: 1; pointer-events: auto; }
-        .header { position: relative; z-index: 15; flex-shrink: 0; padding: 15px 20px; padding-top: 45px; background-color: rgba(247, 247, 247, 0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 600; }
+        .header { position: relative; z-index: 15; flex-shrink: 0; padding: 15px 20px; padding-top: 45px; background-color: rgba(247, 247, 247, 0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 600; pointer-events: auto; }
         .header .header-actions { 
     display: flex; 
     align-items: center; 
@@ -274,6 +274,8 @@
         .action-button { border: none; color: white; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; flex-shrink: 0; }
         #send-btn { background-color: var(--accent-color); height: 40px; padding: 0 15px;}
         .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: center; z-index: 100; }
+        /* 在浮动聊天窗口内的modal需要更高z-index */
+        #chat-interface-screen.floating-chat-window .modal { z-index: 10000 !important; position: fixed !important; }
         .modal.visible { display: flex; }
         .modal-content { width: 90%; max-height: 90%; background-color: white; border-radius: 15px; display: flex; flex-direction: column; }
         .modal-header { padding: 15px; font-weight: 600; border-bottom: 1px solid var(--border-color); text-align: center; display: flex; justify-content: space-between; align-items: center; }
@@ -10703,7 +10705,58 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
             display: none !important;
         }
         
-        /* 悬浮小按钮 */
+        /* 悬浮聊天按钮（可拖动） */
+        #floating-chat-toggle-btn {
+            position: fixed !important;
+            width: 56px !important;
+            height: 56px !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            font-size: 24px !important;
+            cursor: move !important; /* 可拖动 */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 10500 !important; /* 超高优先级，确保在所有元素之上 */
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+            transition: transform 0.2s, box-shadow 0.2s !important; /* 拖拽时禁用过渡 */
+            pointer-events: auto !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-user-drag: none !important;
+            touch-action: none !important; /* 禁用默认触摸行为，允许自由拖动 */
+            top: 60px !important;
+            right: 10px !important;
+        }
+        
+        #floating-chat-toggle-btn:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6) !important;
+        }
+        
+        #floating-chat-toggle-btn:active {
+            transform: scale(0.95) !important;
+        }
+        
+        /* 聊天窗口打开时的按钮状态 */
+        #floating-chat-toggle-btn.chat-open {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4) !important;
+        }
+        
+        #floating-chat-toggle-btn.chat-open:hover {
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.6) !important;
+        }
+        
+        /* 拖拽中禁用过渡 */
+        #floating-chat-toggle-btn.dragging {
+            transition: none !important;
+            cursor: grabbing !important;
+        }
+        
+        /* 悬浮小按钮（最小化时使用，保留兼容性） */
         #floating-chat-mini-btn {
             position: fixed !important;
             width: 56px !important;
@@ -10938,6 +10991,110 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
         /* Add a close button for floating mode using pseudo-element or JS */
         /* We will handle close logic via JS listener on a dynamic element or existing one */
 
+/* === New Pet Style (from Seal) === */
+.pet-sprite-container svg {
+    width: 100%;
+    height: 100%;
+    shape-rendering: crispEdges;
+}
+
+/* === 状态控制 === */
+#seal-layer { display: none; }
+#egg-layer { display: block; animation: float-egg 3s infinite ease-in-out; cursor: pointer; }
+
+@keyframes float-egg {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+.egg-shake {
+    animation: heavy-shake 0.5s cubic-bezier(.36,.07,.19,.97) both !important;
+}
+
+@keyframes heavy-shake {
+    10%, 90% { transform: translate3d(-2px, 0, 0); }
+    20%, 80% { transform: translate3d(4px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+    40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
+.pop-up {
+    display: block !important;
+    animation: pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes pop {
+    0% { transform: scale(0.5) translateY(20px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* === 移动时的蠕动动画 === */
+.is-walking #seal-body-group {
+    animation: waddle 0.3s infinite alternate ease-in-out !important;
+}
+@keyframes waddle {
+    0% { transform: rotate(-3deg) translateY(0); }
+    100% { transform: rotate(3deg) translateY(-4px); }
+}
+
+/* === 海豹动画 (基础) === */
+#tail-group {
+    transform-origin: 52px 34px;
+    animation: tail-wag 0.2s infinite alternate ease-in-out;
+}
+@keyframes tail-wag {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(8deg); }
+}
+
+#left-flipper-group {
+    transform-origin: 12px 40px;
+    animation: wave 1s infinite alternate ease-in-out;
+}
+@keyframes wave {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-20deg); }
+}
+
+/* === 交互反应 === */
+.is-petting #seal-body-group {
+    transform-origin: bottom center;
+    animation: squish 0.3s infinite alternate;
+}
+@keyframes squish {
+    0% { transform: scaleY(1); }
+    100% { transform: scaleY(0.96); }
+}
+
+.is-angry #seal-body-group {
+    animation: angry-shake 0.1s infinite !important;
+}
+@keyframes angry-shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    25% { transform: translate(-1px, -2px) rotate(-1deg); }
+    50% { transform: translate(-2px, 0px) rotate(1deg); }
+    75% { transform: translate(2px, 1px) rotate(-1deg); }
+    100% { transform: translate(1px, -1px) rotate(0deg); }
+}
+
+/* 表情切换 */
+.face-normal { display: block; }
+.face-happy { display: none; }
+.face-angry { display: none; }
+.anger-mark { display: none; }
+
+.is-petting .face-normal { display: none; }
+.is-petting .face-happy { display: block; }
+
+.is-angry .face-normal { display: none !important; }
+.is-angry .face-happy { display: none !important; }
+.is-angry .face-angry { display: block !important; }
+.is-angry .anger-mark { display: block !important; animation: pulse-mark 0.2s infinite alternate; }
+
+@keyframes pulse-mark {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.2); }
+}
+
 </style>
   <link rel="apple-touch-icon" href="https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1758510900942_qdqqd_djw0z2.jpeg">
   <link rel="manifest" href="manifest.json">
@@ -11152,6 +11309,15 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
             <div class="app-icon" onclick="openCharApp('music')">
               <div class="icon-bg"><img id="cphone-icon-img-music" src=""></div><span class="label"data-lang-key="cphoneAppMusic">网易云</span>
             </div>
+            <div class="app-icon" onclick="openCharApp('cwallet')">
+              <div class="icon-bg" style="background: #4caf50; display: flex; align-items: center; justify-content: center;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 12V8H4v4"></path>
+                  <path d="M4 8V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2-2v2"></path>
+                  <path d="M18 12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6"></path>
+                </svg>
+              </div><span class="label">钱包</span>
+            </div>
             <div class="app-icon" onclick="switchToMyPhone()">
               <div class="icon-bg"><img id="cphone-icon-img-ephone" src=""></div><span class="label"data-lang-key="cphoneAppEphone">Ephone</span>
             </div>
@@ -11179,8 +11345,15 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
       <div id="char-qq-conversation-screen" class="char-screen">
         <div class="header"> <span class="back-btn" id="back-to-char-qq-list-btn">‹</span> <span id="char-conversation-partner-name"></span> <span style="width: 30px;"></span> </div>
         <div id="char-conversation-messages" class="list-container"> </div>
-        <div id="char-conversation-input-area" style="padding: 8px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background-color: #f7f7f7;"> <input type="text" id="char-simulated-input" placeholder="这是模拟对话，无法发送消息" data-lang-key-placeholder="cphoneSimulatedChatPlaceholder"disabled
-            style="flex-grow: 1; padding: 10px; border-radius: 6px; border: 1px solid #ddd; background: #eee;"> <button id="char-simulated-send-btn" style="padding: 0 20px; border: none; background-color: var(--accent-color); color: white; border-radius: 6px; font-weight: 500;">发送</button> </div>
+        <div id="char-conversation-input-area" style="padding: 8px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background-color: #f7f7f7; flex-direction: column;">
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="char-simulated-input" placeholder="输入消息..." data-lang-key-placeholder="cphoneSimulatedChatPlaceholder"
+                style="flex-grow: 1; padding: 10px; border-radius: 6px; border: 1px solid #ddd; background: white;"> 
+            <button id="char-simulated-send-btn" style="padding: 0 20px; border: none; background-color: var(--accent-color); color: white; border-radius: 6px; font-weight: 500;">发送</button>
+            <button id="char-simulated-transfer-btn" style="padding: 0 20px; border: none; background-color: #4caf50; color: white; border-radius: 6px; font-weight: 500;" title="转账">￥</button>
+          </div>
+          <button id="char-simulated-receive-reply-btn" style="padding: 8px; border: none; background-color: #ff9800; color: white; border-radius: 6px; font-weight: 500; display: none;">接受回复</button>
+        </div>
       </div>
       <div id="char-album-screen" class="char-screen">
         <div class="header"> <span class="back-btn" onclick="switchToCharHomeScreen()">‹</span> <span data-lang-key="cphoneAlbumTitle">TA的相册</span>
@@ -11226,6 +11399,23 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
               </svg> </span> </div>
         </div>
         <div id="char-product-grid" class="list-container"></div>
+      </div>
+      <div id="char-cwallet-screen" class="char-screen">
+        <div class="header"> <span class="back-btn" onclick="switchToCharHomeScreen()">‹</span> <span>零钱明细</span>
+          <div class="header-actions">
+             <span class="action-btn" id="regenerate-char-cwallet-btn" title="重新生成账单"> <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
+                <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+              </svg> </span> </div>
+        </div>
+        <div class="list-container" style="background-color: #f5f5f5;">
+            <div style="padding: 30px 20px; background-color: #4caf50; color: white; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <div style="font-size: 14px; opacity: 0.9;">当前余额</div>
+                <div id="char-cwallet-balance" style="font-size: 36px; font-weight: bold; margin-top: 5px;">¥0.00</div>
+            </div>
+            <div style="padding: 10px 15px; color: #666; font-size: 14px; font-weight: bold;">近期交易</div>
+            <div id="char-cwallet-list" style="background-color: white;"></div>
+        </div>
       </div>
       <div id="char-wallet-screen" class="char-screen">
         <div class="header"> <span class="back-btn" id="char-wallet-back-btn">‹</span> <span data-lang-key="cphoneWalletTitle">钱包</span> <span style="width: 30px;"></span> </div>
@@ -11969,7 +12159,92 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
             <div class="pet-gameboy-screen-display">
               <div class="pet-display-area">
                 <div id="pet-sprite-container" class="pet-sprite-container">
-                  <div id="pet-sprite" class="pet-sprite">🐾</div>
+                  <div id="pet-sprite" class="pet-sprite" style="width: 200px; height: 200px; animation: none;">
+                    <svg id="egg-layer" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="18" y="54" width="28" height="4" fill="#a0c0e0" opacity="0.6"/>
+                      <path d="M24 16 H40 V17 H44 V18 H46 V20 H48 V24 H50 V44 H48 V50 H46 V52 H42 V54 H22 V52 H18 V50 H16 V44 H14 V24 H16 V20 H18 V18 H20 V17 H24 Z" fill="#4a4a4a" />
+                      <rect x="24" y="17" width="16" height="35" fill="#ffffff"/>
+                      <rect x="20" y="18" width="24" height="34" fill="#ffffff"/>
+                      <rect x="18" y="20" width="28" height="30" fill="#ffffff"/>
+                      <rect x="16" y="24" width="32" height="20" fill="#ffffff"/>
+                      <rect x="18" y="44" width="28" height="6" fill="#ffffff"/>
+                      <rect x="22" y="50" width="20" height="2" fill="#ffffff"/>
+                      <rect x="28" y="24" width="2" height="2" fill="#d0d0d0" />
+                      <rect x="36" y="20" width="1" height="1" fill="#d0d0d0" />
+                      <rect x="42" y="30" width="2" height="2" fill="#d0d0d0" />
+                      <rect x="22" y="36" width="1" height="1" fill="#d0d0d0" />
+                      <rect x="30" y="42" width="2" height="1" fill="#d0d0d0" />
+                      <rect x="38" y="38" width="1" height="1" fill="#d0d0d0" />
+                      <rect x="26" y="46" width="1" height="2" fill="#d0d0d0" />
+                      <rect x="40" y="48" width="1" height="1" fill="#d0d0d0" />
+                    </svg>
+                    <svg id="seal-layer" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="18" y="48" width="28" height="4" fill="#a0c0e0" opacity="0.6" />
+                      <g id="seal-body-group">
+                        <g id="tail-group">
+                          <path d="M52 30 H56 V28 H57 V27 H60 V28 H61 V31 H60 V32 H57 V34 H61 V35 H60 V37 H56 V38 H52 V37 H52 Z" fill="#4a4a4a" />
+                          <rect x="52" y="31" width="4" height="6" fill="#ffffff" />
+                          <rect x="56" y="29" width="4" height="2" fill="#ffffff" />
+                          <rect x="56" y="35" width="4" height="2" fill="#ffffff" />
+                        </g>
+                        <path d="M20 20 H44 V21 H48 V22 H50 V24 H52 V38 H50 V42 H48 V44 H44 V45 H20 V44 H16 V42 H14 V38 H12 V24 H14 V22 H16 V21 H20 Z" fill="#4a4a4a"/>
+                        <rect x="20" y="21" width="24" height="23" fill="#ffffff" />
+                        <rect x="16" y="22" width="32" height="21" fill="#ffffff" />
+                        <rect x="14" y="24" width="36" height="17" fill="#ffffff" />
+                        <rect x="13" y="30" width="38" height="9" fill="#ffffff" />
+                        <rect x="42" y="24" width="1" height="1" fill="#d3d3d3" />
+                        <rect x="39" y="23" width="1" height="1" fill="#d3d3d3" />
+                        <rect x="46" y="28" width="2" height="2" fill="#d3d3d3" />
+                        <g id="left-flipper-group">
+                          <rect x="10" y="38" width="2" height="4" fill="#4a4a4a" />
+                          <rect x="12" y="42" width="3" height="1" fill="#4a4a4a" />
+                          <rect x="11" y="39" width="3" height="3" fill="#ffffff" />
+                        </g>
+                        <g id="face-group">
+                          <g class="face-normal">
+                            <rect x="20" y="30" width="3" height="3" fill="#2a2a2a" />
+                            <rect x="21" y="30" width="1" height="1" fill="#ffffff" opacity="0.8" />
+                            <rect x="36" y="30" width="3" height="3" fill="#2a2a2a" />
+                            <rect x="37" y="30" width="1" height="1" fill="#ffffff" opacity="0.8" />
+                            <rect x="29" y="31" width="1" height="1" fill="#4a4a4a" /> 
+                            <rect x="29" y="33" width="1" height="1" fill="#4a4a4a" /> 
+                            <rect x="28" y="34" width="1" height="1" fill="#4a4a4a" />
+                            <rect x="30" y="34" width="1" height="1" fill="#4a4a4a" />
+                          </g>
+                          <g class="face-happy">
+                            <rect x="20" y="31" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="21" y="30" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="22" y="31" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="36" y="31" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="37" y="30" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="38" y="31" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="29" y="30" width="1" height="1" fill="#4a4a4a" />
+                            <rect x="28" y="31" width="3" height="1" fill="#4a4a4a" />
+                          </g>
+                          <g class="face-angry">
+                            <rect x="20" y="29" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="21" y="30" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="22" y="31" width="2" height="2" fill="#2a2a2a" />
+                            <rect x="38" y="29" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="37" y="30" width="1" height="1" fill="#2a2a2a" />
+                            <rect x="35" y="31" width="2" height="2" fill="#2a2a2a" />
+                            <rect x="28" y="34" width="3" height="1" fill="#4a4a4a" />
+                          </g>
+                          <rect x="16" y="32" width="1" height="1" fill="#ffb7b2" />
+                          <rect x="18" y="32" width="1" height="1" fill="#ffb7b2" />
+                          <rect x="40" y="32" width="1" height="1" fill="#ffb7b2" />
+                          <rect x="42" y="32" width="1" height="1" fill="#ffb7b2" />
+                        </g>
+                        <g class="anger-mark" transform="translate(46, 16)">
+                          <rect x="2" y="0" width="2" height="2" fill="#ff0000" />
+                          <rect x="0" y="2" width="2" height="2" fill="#ff0000" />
+                          <rect x="2" y="2" width="2" height="2" fill="#ff0000" />
+                          <rect x="4" y="2" width="2" height="2" fill="#ff0000" />
+                          <rect x="2" y="4" width="2" height="2" fill="#ff0000" />
+                        </g>
+                      </g>
+                    </svg>
+                  </div>
                   <div id="pet-accessories" class="pet-accessories"></div>
                 </div>
                 <div id="pet-bubble" class="pet-bubble"></div>
@@ -12117,7 +12392,7 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
       <div id="preset-content-container"></div>
     </div>
     <div id="movie-screen" class="screen">
-      <div class="header"> <span class="back-btn" onclick="showScreen('home-screen')">‹</span> <span>观影室</span> <span class="action-btn" onclick="window.screeningRoomContext.toggleFloatingChat()" style="font-size: 20px;">💬</span> </div>
+      <div class="header"> <span class="back-btn" onclick="showScreen('home-screen')">‹</span> <span>观影室</span> <span style="width: 30px;"></span> </div>
       <div class="movie-search-container">
         <div class="movie-search-box">
           <input type="text" id="movie-search-input" class="movie-search-input" placeholder="搜索影视名称...">
@@ -13068,10 +13343,7 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
     <div id="wallet-screen" class="screen">
       <div class="header"> <span class="back-btn" onclick="showScreen('home-screen')">‹</span> <span>钱包</span>
         <div class="header-actions">
-          <span class="action-btn" id="generate-wallet-balance-btn" title="生成余额"> <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
-              <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-            </svg> </span>
+          <!-- 余额生成按钮已移除 -->
         </div>
       </div>
       <div class="wallet-container">
@@ -13079,18 +13351,10 @@ body.minimal-chat-ui-active.chat-actions-expanded #chat-interface-screen #chat-m
           <div class="wallet-balance-card">
             <div class="wallet-balance-label" id="wallet-balance-label">我的余额</div>
             <div class="wallet-balance-amount" id="wallet-user-balance">¥0.00</div>
-            <button id="switch-wallet-view-btn" style="margin-top: 10px; font-size: 12px; padding: 4px 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 15px; color: white; cursor: pointer; display: none;">切换到对方钱包</button>
-          </div>
-          <div style="margin-top: 15px;">
-            <div class="wallet-section-header" style="margin-bottom: 8px;">
-              <span>选择用户身份</span>
-            </div>
-            <select id="wallet-user-select" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--secondary-bg); color: var(--text-primary); font-size: 14px;">
-              <option value="">-- 选择聊天（使用该聊天中的人设生成余额）--</option>
-            </select>
           </div>
           <div style="margin-top: 15px; display: flex; gap: 10px;">
-            <!-- 手动添加收入/支出按钮已移除 - 所有交易将自动记录 -->
+            <button id="add-income-btn" class="form-button" style="flex: 1; background-color: #4caf50; color: white; margin-top: 0;">+ 收入</button>
+            <button id="add-expense-btn" class="form-button" style="flex: 1; background-color: #f44336; color: white; margin-top: 0;">- 支出</button>
           </div>
         </div>
         <div class="wallet-transactions-section">
@@ -16884,7 +17148,8 @@ let werewolfGameState = {
                 let newWallpaperBase64 = null;
                 let isSelectionMode = false;
 let cphoneRenderedCount = 0;
-let cphoneActiveConversationType = null; 
+let cphoneActiveConversationType = null;
+let cphoneActiveConversationIndex = null; // 当前打开的对话索引 (-1表示与用户的真实对话) 
 let isLoadingMoreCphoneMessages = false;
         let activeStickerCategoryId = 'all'; 
                 let selectedMessages = new Set();
@@ -22744,16 +23009,31 @@ else if (msg.type === 'share_link') {
     }
 }else if (msg.type === 'transfer') {
                     bubble.classList.add('is-transfer', 'is-card-like');
-                     let titleText, noteText;
-                    const myNickname = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
+                    let titleText, noteText;
+                    const myDisplayNickname = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
+                    const myRealName = state.qzoneSettings.nickname || '{{user}}';
+                    
+                    // 判断是否是发给我的（包括：接收者名字匹配、或者私聊中对方发来的、或者我自己发给自己的）
+                    const isReceiverMe = msg.receiverName === myDisplayNickname || 
+                                         msg.receiverName === myRealName || 
+                                         msg.receiverName === '我' ||
+                                         (!chat.isGroup && !isUser) || 
+                                         (isUser && (msg.receiverName === myDisplayNickname || msg.receiverName === myRealName || msg.receiverName === '我'));
+
                     const senderDisplayName = getDisplayNameInGroup(chat, msg.senderName);
                     const receiverDisplayName = getDisplayNameInGroup(chat, msg.receiverName || chat.name);
-                    if (isUser) { 
+                    
+                    if (isUser && !isReceiverMe) { 
                         if (msg.isRefund) { titleText = `退款给 ${receiverDisplayName}`; noteText = '已拒收对方转账'; } 
                         else { titleText = `转账给 ${receiverDisplayName}`; if (msg.status === 'accepted') noteText = '对方已收款'; else if (msg.status === 'declined') noteText = '对方已拒收'; else noteText = msg.note || '等待对方处理...'; }
                     } else {
                         if (msg.isRefund) { titleText = `退款来自 ${senderDisplayName}`; noteText = '转账已被拒收'; } 
-                        else if (msg.receiverName === myNickname) { titleText = `转账给 ${myNickname}`; if (msg.status === 'accepted') noteText = '你已收款'; else if (msg.status === 'declined') noteText = '你已拒收'; else { bubble.style.cursor = 'pointer'; bubble.dataset.status = 'pending'; noteText = msg.note || '点击处理'; } } 
+                        else if (isReceiverMe) { 
+                            titleText = `转账给 ${myDisplayNickname}`; 
+                            if (msg.status === 'accepted') noteText = '你已收款'; 
+                            else if (msg.status === 'declined') noteText = '你已拒收'; 
+                            else { bubble.style.cursor = 'pointer'; bubble.dataset.status = 'pending'; noteText = msg.note || '点击处理'; } 
+                        } 
                         else { titleText = `转账: ${senderDisplayName} → ${receiverDisplayName}`; noteText = msg.note || '群聊内转账'; }
                     }
                     const heartIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="vertical-align: middle;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`;
@@ -32406,15 +32686,10 @@ let selectedFrames = new Set();
                 };
                 chat.history.push(refundMessage);
                 
-                // 自动记录到钱包流水（退款收入）
-                if (typeof addWalletTransaction === 'function') {
-                    addWalletTransaction({
-                        type: 'income',
-                        title: `退款来自${originalMessage.senderName}`,
-                        amount: originalMessage.amount,
-                        timestamp: new Date().toISOString()
-                    });
-                }
+                // 自动记录到钱包流水（退款收入） - 已禁用，因为拒收不应增加用户余额
+                // if (typeof addWalletTransaction === 'function') {
+                //    addWalletTransaction({ ... });
+                // }
                 
                 systemContent = `[系统提示：你拒绝并退还了"${originalMessage.senderName}"的转账。]`;
             } else { 
@@ -35415,15 +35690,10 @@ ${formattedHistory}
                 };
                 chat.history.push(refundMessage);
                 
-                // 自动记录到钱包流水（退款收入）
-                if (typeof addWalletTransaction === 'function') {
-                    addWalletTransaction({
-                        type: 'income',
-                        title: `退款来自${originalMessage.senderName}`,
-                        amount: originalMessage.amount,
-                        timestamp: new Date().toISOString()
-                    });
-                }
+                // 自动记录到钱包流水（退款收入） - 已禁用，因为拒收不应增加用户余额
+                // if (typeof addWalletTransaction === 'function') {
+                //    addWalletTransaction({ ... });
+                // }
                 
                 systemContent = `[系统提示：你拒绝并退还了"${originalMessage.senderName}"的转账。]`;
             } else { 
@@ -40982,9 +41252,13 @@ window.switchToCharScreen = switchToCharScreen;
                     renderCharAppUsage();
                     switchToCharScreen('char-usage-screen');
                     break;
+                case 'cwallet':
+                    renderCharCWallet();
+                    switchToCharScreen('char-cwallet-screen');
+                    break;
             }
         }
-        
+
         /**
          * 【全新 | V3.2 终极防空窗+生图开关+描述显示版】渲染角色相册
          */
@@ -41117,6 +41391,207 @@ function renderCharBrowserHistory() {
                 gridEl.appendChild(itemEl);
             });
         }
+
+        /**
+         * 【全新】渲染角色的Cphone钱包页面
+         */
+        function renderCharCWallet() {
+            if (!activeCharacterId) return;
+            const char = state.chats[activeCharacterId];
+            const walletData = char.simulatedWallet || { balance: 0, transactions: [] };
+            
+            // 更新余额显示
+            document.getElementById('char-cwallet-balance').textContent = `¥${(walletData.balance || 0).toFixed(2)}`;
+            
+            const listEl = document.getElementById('char-cwallet-list');
+            listEl.innerHTML = '';
+            
+            if (!walletData.transactions || walletData.transactions.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; padding: 30px; color: #999;">暂无账单记录，点击右上角生成</div>';
+                return;
+            }
+            
+            // 按时间倒序排序
+            const sorted = [...walletData.transactions].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            sorted.forEach(t => {
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;';
+                
+                const isIncome = t.amount > 0;
+                const sign = isIncome ? '+' : '';
+                const color = isIncome ? '#f44336' : '#333'; // 微信/支付宝风格：支出黑色，收入红色（或反过来，这里仿照支付宝：收入红，支出黑）
+                
+                item.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="font-size: 16px; color: #333;">${t.title}</div>
+                        <div style="font-size: 12px; color: #999;">${new Date(t.timestamp).toLocaleDateString()} ${new Date(t.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                    <div style="font-size: 18px; font-weight: bold; color: ${color};">${sign}${t.amount.toFixed(2)}</div>
+                `;
+                
+                // 点击查看详情
+                item.onclick = () => {
+                    if (typeof showCustomAlert === 'function') {
+                        showCustomAlert("交易详情", `
+                            <div style="text-align: left;">
+                                <p><strong>说明：</strong>${t.title}</p>
+                                <p><strong>金额：</strong>${sign}${t.amount.toFixed(2)}</p>
+                                <p><strong>时间：</strong>${new Date(t.timestamp).toLocaleString()}</p>
+                                <p><strong>备注：</strong>${t.description || '无'}</p>
+                            </div>
+                        `);
+                    } else {
+                        alert(`【账单详情】\n\n交易说明：${t.title}\n交易金额：${sign}${t.amount.toFixed(2)}\n交易时间：${new Date(t.timestamp).toLocaleString()}\n\n备注/详情：${t.description || '无更多详情'}`);
+                    }
+                };
+                
+                listEl.appendChild(item);
+            });
+        }
+
+        /**
+         * 【AI生成】生成角色钱包数据 (余额 + 10条流水)
+         */
+        async function generateCharWalletData() {
+            if (!activeCharacterId) return;
+            const char = state.chats[activeCharacterId];
+            
+            showCustomAlert('正在生成', 'AI正在分析角色消费习惯并生成账单...', 0);
+            
+            try {
+                // 获取API配置
+                const useSecondaryApi = state.apiConfig && state.apiConfig.secondaryProxyUrl && state.apiConfig.secondaryApiKey && state.apiConfig.secondaryModel;
+                const { proxyUrl, apiKey, model } = useSecondaryApi 
+                    ? { proxyUrl: state.apiConfig.secondaryProxyUrl, apiKey: state.apiConfig.secondaryApiKey, model: state.apiConfig.secondaryModel }
+                    : (state.apiConfig || {});
+
+                if (!proxyUrl || !apiKey || !model) {
+                    throw new Error('API未配置，无法生成内容。请在设置中配置API。');
+                }
+
+                // 构建提示词
+                const prompt = `请根据以下角色设定，生成该角色的手机钱包数据，包含：
+1. 当前账户余额 (根据角色经济状况设定合理数值)
+2. 最近的10条收支流水记录 (包含收入和支出，需符合角色生活习惯)
+
+角色名称: ${char.name}
+角色设定: ${char.settings.aiPersona || char.settings.characterPersona || '无特定设定'}
+
+请严格按照以下JSON格式返回数据 (不要包含 Markdown 代码块标记，只返回 JSON 字符串):
+{
+    "balance": 1234.56,
+    "transactions": [
+        {
+            "title": "购买全家便利店早餐",
+            "amount": -25.50,
+            "description": "买了三明治和咖啡",
+            "timestamp_offset_hours": 2  // 距离现在多少小时前
+        },
+        {
+            "title": "工资收入",
+            "amount": 8000.00,
+            "description": "x月份工资",
+            "timestamp_offset_hours": 240
+        }
+        ... (共10条)
+    ]
+}`;
+
+                const messagesForApi = [{ role: 'user', content: "生成钱包数据 JSON" }];
+                let isGemini = proxyUrl.includes('generativelanguage');
+                let responseText = '';
+
+                if (isGemini) {
+                    let geminiConfig = toGeminiRequestData(model, apiKey, prompt, messagesForApi);
+                    const response = await fetch(geminiConfig.url, geminiConfig.data);
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0].content) {
+                         responseText = data.candidates[0].content.parts[0].text;
+                    }
+                } else {
+                     const response = await fetch(`${proxyUrl}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [{role: 'system', content: prompt}, ...messagesForApi],
+                            temperature: 0.7
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.choices && data.choices[0]) {
+                        responseText = data.choices[0].message.content;
+                    }
+                }
+                const apiResponse = responseText;
+                
+                // 解析 JSON
+                let jsonStr = apiResponse.trim();
+                // 尝试去除可能的 Markdown 标记
+                jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+                
+                let data;
+                try {
+                    data = JSON.parse(jsonStr);
+                } catch (e) {
+                    console.error('JSON解析失败，尝试修复', e);
+                    // 简单的尝试提取 JSON 部分
+                    const match = jsonStr.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        data = JSON.parse(match[0]);
+                    } else {
+                        throw new Error('无法解析API返回的JSON数据');
+                    }
+                }
+                
+                if (!data || typeof data.balance !== 'number' || !Array.isArray(data.transactions)) {
+                    throw new Error('API返回数据格式不正确');
+                }
+                
+                // 处理时间戳
+                const now = Date.now();
+                data.transactions.forEach(t => {
+                    // 如果API没有返回timestamp，用 offset 算，或者随机生成
+                    if (t.timestamp_offset_hours) {
+                        t.timestamp = now - (t.timestamp_offset_hours * 60 * 60 * 1000);
+                    } else {
+                        // 随机过去30天内
+                        t.timestamp = now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
+                    }
+                    // 确保 amount 类型正确
+                    t.amount = parseFloat(t.amount);
+                });
+                
+                // 保存数据
+                char.simulatedWallet = data;
+                await db.chats.put(char);
+                
+                // 渲染
+                renderCharCWallet();
+                
+                if (document.querySelector('.custom-alert-overlay')) {
+                    document.querySelector('.custom-alert-overlay').remove();
+                }
+                showCustomAlert('成功', '钱包账单已生成！');
+                
+            } catch (error) {
+                console.error('生成钱包数据失败:', error);
+                if (document.querySelector('.custom-alert-overlay')) {
+                    document.querySelector('.custom-alert-overlay').remove();
+                }
+                showCustomAlert('失败', '生成失败: ' + error.message);
+            }
+        }
+
+        // 绑定重新生成按钮事件
+        setTimeout(() => {
+            const regenBtn = document.getElementById('regenerate-char-cwallet-btn');
+            if (regenBtn) {
+                regenBtn.addEventListener('click', generateCharWalletData);
+            }
+        }, 1000);
+
 /**
  * 切换回Cphone的主屏幕
  */
@@ -41997,11 +42472,57 @@ ${stickerContext}
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
         
-        const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
-        if (!jsonMatch || !jsonMatch[0]) {
+        let cleanedJsonString = null;
+        
+        // 尝试更智能地提取JSON数组 (通过括号匹配，忽略字符串内的括号)
+        const startIndex = aiResponseContent.indexOf('[');
+        if (startIndex !== -1) {
+            let bracketCount = 0;
+            let endIndex = -1;
+            let inString = false;
+            let escape = false;
+
+            for (let i = startIndex; i < aiResponseContent.length; i++) {
+                const char = aiResponseContent[i];
+                if (escape) {
+                    escape = false;
+                    continue;
+                }
+                if (char === '\\') {
+                    escape = true;
+                    continue;
+                }
+                if (char === '"') {
+                    inString = !inString;
+                    continue;
+                }
+                if (!inString) {
+                    if (char === '[') bracketCount++;
+                    else if (char === ']') bracketCount--;
+                    
+                    if (bracketCount === 0) {
+                        endIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (endIndex !== -1) {
+                cleanedJsonString = aiResponseContent.substring(startIndex, endIndex + 1);
+            }
+        }
+
+        // 降级方案：如果智能匹配失败，尝试正则提取
+        if (!cleanedJsonString) {
+             const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
+             if (jsonMatch && jsonMatch[0]) {
+                 cleanedJsonString = jsonMatch[0];
+             }
+        }
+
+        if (!cleanedJsonString) {
             throw new Error(`AI返回的内容中未找到有效的JSON数组。原始返回: ${aiResponseContent}`);
         }
-        const cleanedJsonString = jsonMatch[0];
+
         let simulatedConversations;
         try {
             simulatedConversations = JSON.parse(cleanedJsonString);
@@ -42139,7 +42660,10 @@ const messagesPayload = historySlice.map(msg => ({
 }));
         
         let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesPayload);
+        let geminiConfig = null;
+        if (isGemini) {
+            geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesPayload);
+        }
 
         const response = isGemini 
             ? await fetch(geminiConfig.url, geminiConfig.data) 
@@ -42154,11 +42678,50 @@ const messagesPayload = historySlice.map(msg => ({
             });
 
         if (!response.ok) {
-            throw new Error(`API 请求失败: ${(await response.json()).error.message}`);
+            let errorMessage = `API 请求失败 (${response.status})`;
+            try {
+                const errorData = await response.json();
+                if (errorData && errorData.error && errorData.error.message) {
+                    errorMessage = `API 请求失败: ${errorData.error.message}`;
+                } else if (errorData && errorData.message) {
+                    errorMessage = `API 请求失败: ${errorData.message}`;
+                } else {
+                    const responseText = await response.text();
+                    if (responseText) {
+                        errorMessage = `API 请求失败: ${responseText.substring(0, 200)}`;
+                    }
+                }
+            } catch (e) {
+                // 如果响应不是JSON，尝试读取文本
+                try {
+                    const responseText = await response.text();
+                    if (responseText) {
+                        errorMessage = `API 请求失败: ${responseText.substring(0, 200)}`;
+                    } else {
+                        errorMessage = `API 请求失败: 未接收到上游响应内容 (${response.status})`;
+                    }
+                } catch (e2) {
+                    errorMessage = `API 请求失败: 无法读取响应内容 (${response.status})`;
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        const aiResponseContent = getGeminiResponseText(data);
+        let aiResponseContent = '';
+        
+        if (isGemini) {
+            aiResponseContent = getGeminiResponseText(data);
+        } else {
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                aiResponseContent = data.choices[0].message.content || '';
+            }
+        }
+        
+        if (!aiResponseContent) {
+            throw new Error("API返回空响应内容");
+        }
+        
         const messagesArray = parseAiResponse(aiResponseContent);
 
         if (!messagesArray || messagesArray.length === 0) {
@@ -42285,6 +42848,7 @@ async function openCharSimulatedConversation(conversationIndex) {
     if (!mainChar) return; 
 
     cphoneActiveConversationType = (conversationIndex === -1) ? 'private_user' : mainChar.simulatedConversations[conversationIndex]?.type; 
+    cphoneActiveConversationIndex = conversationIndex; // 存储当前对话索引
 
     const bodyEl = document.getElementById('char-conversation-messages'); 
     bodyEl.innerHTML = '';
@@ -42306,7 +42870,9 @@ async function openCharSimulatedConversation(conversationIndex) {
 
         bodyEl.innerHTML = '';
         titleEl.textContent = mainChar.settings.myNickname || (state.qzoneSettings.nickname || '我');
-        inputEl.placeholder = `与 ${mainChar.settings.myNickname || '我'} 的对话 (只读)`;
+        inputEl.placeholder = `与 ${mainChar.settings.myNickname || '我'} 发送消息...`;
+        inputEl.disabled = false;
+        inputEl.style.background = 'white';
 
         cphoneRenderedCount = 0;
         isLoadingMoreCphoneMessages = false;
@@ -42344,7 +42910,9 @@ async function openCharSimulatedConversation(conversationIndex) {
 
         if (conversation.type === 'group') {
             titleEl.textContent = `${conversation.groupName} (${conversation.participants.length + 1})`;
-            inputEl.placeholder = `在 ${conversation.groupName} 中聊天`;
+            inputEl.placeholder = `在 ${conversation.groupName} 中发送消息...`;
+            inputEl.disabled = false;
+            inputEl.style.background = 'white';
             tempChatObjectForRendering = {
                 id: 'temp_group_chat', isGroup: true,
                 name: conversation.groupName,
@@ -42366,7 +42934,9 @@ async function openCharSimulatedConversation(conversationIndex) {
             };
         } else { 
             titleEl.textContent = conversation.participant.name;
-            inputEl.placeholder = `与 ${conversation.participant.name} 的对话`;
+            inputEl.placeholder = `与 ${conversation.participant.name} 发送消息...`;
+            inputEl.disabled = false;
+            inputEl.style.background = 'white';
             const npcData = npcMap.get(conversation.participant.name);
             const npcAvatarUrl = (npcData && npcData.avatar) ? npcData.avatar :
                 (state.globalSettings.enableAiDrawing
@@ -42431,7 +43001,428 @@ async function openCharSimulatedConversation(conversationIndex) {
 
     switchToCharScreen('char-qq-conversation-screen');
     setTimeout(() => bodyEl.scrollTop = bodyEl.scrollHeight, 0); // 渲染完成后滚动到底部
+    
+    // 隐藏接受回复按钮（打开对话时默认隐藏）
+    const receiveBtn = document.getElementById('char-simulated-receive-reply-btn');
+    if (receiveBtn) {
+        receiveBtn.style.display = 'none';
+    }
 }
+
+/**
+ * 【全新】发送消息到NPC并接收回复
+ */
+async function sendMessageToNPC(messageText) {
+    if (!activeCharacterId || cphoneActiveConversationIndex === null) {
+        return;
+    }
+    
+    const mainChar = state.chats[activeCharacterId];
+    if (!mainChar) return;
+    
+    // 处理与用户的真实对话
+    if (cphoneActiveConversationIndex === -1) {
+        // 在Cphone中给用户发消息 - 这是角色给用户发消息
+        const charName = mainChar.originalName || mainChar.name;
+        const userDisplayName = mainChar.settings.myNickname || (state.qzoneSettings.nickname || '用户');
+        
+        // 保存到聊天记录 - 角色发的消息，role应该是'assistant'
+        const charMessage = {
+            role: 'assistant', // 角色发的消息
+            content: messageText,
+            timestamp: Date.now()
+        };
+        mainChar.history.push(charMessage);
+        await db.chats.put(mainChar);
+        
+        // 在UI中显示消息 - 在角色视角，角色发送的消息显示为user
+        const bodyEl = document.getElementById('char-conversation-messages');
+        const tempChatObjectForRendering = {
+            id: 'temp_user_chat_mirror',
+            isGroup: false,
+            name: mainChar.name,
+            settings: {
+                ...mainChar.settings,
+                myAvatar: mainChar.settings.aiAvatar,
+                myAvatarFrame: mainChar.settings.aiAvatarFrame,
+                aiAvatar: mainChar.settings.myAvatar,
+                aiAvatarFrame: mainChar.settings.myAvatarFrame
+            }
+        };
+        
+        const charMessageElement = await createMessageElement({
+            role: 'user', // 在角色视角，角色发送的消息显示为user（右侧）
+            content: messageText,
+            senderName: charName, // 发送者是角色
+            timestamp: charMessage.timestamp
+        }, tempChatObjectForRendering);
+        
+        if (charMessageElement) {
+            bodyEl.appendChild(charMessageElement);
+            bodyEl.scrollTop = bodyEl.scrollHeight;
+        }
+        
+        // 显示接受回复按钮
+        const receiveBtn = document.getElementById('char-simulated-receive-reply-btn');
+        if (receiveBtn) {
+            receiveBtn.style.display = 'block';
+            receiveBtn.dataset.replyType = 'user';
+        }
+        
+        return;
+    }
+    
+    // 处理与NPC的对话
+    const conversation = mainChar.simulatedConversations[cphoneActiveConversationIndex];
+    if (!conversation) return;
+    
+    const charName = mainChar.originalName || mainChar.name;
+    const bodyEl = document.getElementById('char-conversation-messages');
+    
+    // 1. 添加用户发送的消息到对话记录
+    const userMessage = {
+        sender: charName,
+        content: messageText,
+        timestamp: Date.now(),
+        sentByUser: true // 标记是用户发送的
+    };
+    
+    if (!conversation.messages) {
+        conversation.messages = [];
+    }
+    conversation.messages.push(userMessage);
+    
+    // 2. 立即在UI中显示用户消息
+    const tempChatObjectForRendering = conversation.type === 'group' ? {
+        id: 'temp_group_chat',
+        isGroup: true,
+        name: conversation.groupName,
+        originalName: mainChar.originalName,
+        settings: {
+            ...mainChar.settings,
+            myNickname: mainChar.name,
+            myAvatar: mainChar.settings.aiAvatar,
+            myAvatarFrame: mainChar.settings.aiAvatarFrame,
+        }
+    } : {
+        id: 'temp_npc_chat',
+        isGroup: false,
+        name: conversation.participant.name,
+        originalName: mainChar.originalName,
+        settings: {
+            ...mainChar.settings,
+            myAvatar: mainChar.settings.aiAvatar,
+            myAvatarFrame: mainChar.settings.aiAvatarFrame,
+        }
+    };
+    
+    const userMessageElement = await createMessageElement({
+        role: 'user',
+        content: messageText,
+        senderName: charName,
+        timestamp: userMessage.timestamp
+    }, tempChatObjectForRendering);
+    
+    if (userMessageElement) {
+        bodyEl.appendChild(userMessageElement);
+        bodyEl.scrollTop = bodyEl.scrollHeight;
+    }
+    
+    // 3. 保存对话记录
+    await db.chats.put(mainChar);
+    
+    // 4. 通知角色（添加到角色的主聊天记录中，让角色知道）
+    const userDisplayName = mainChar.settings.myNickname || (state.qzoneSettings.nickname || '用户');
+    const npcName = conversation.type === 'group' ? conversation.groupName : conversation.participant.name;
+    const notificationMessage = {
+        role: 'system',
+        content: `[系统提示：你发现有人用你的手机在QQ上向"${npcName}"发送了一条消息："${messageText}"。你对此感到困惑，不知道是谁发的。]`,
+        timestamp: Date.now() + 1,
+        isHidden: true
+    };
+    mainChar.history.push(notificationMessage);
+    await db.chats.put(mainChar);
+    
+    // 5. 显示接受回复按钮（不自动生成回复）
+    const receiveBtn = document.getElementById('char-simulated-receive-reply-btn');
+    if (receiveBtn) {
+        receiveBtn.style.display = 'block';
+        receiveBtn.dataset.replyType = 'npc';
+    }
+}
+
+/**
+ * 【全新】生成NPC的回复
+ */
+async function generateNPCReply(conversation, charName) {
+    if (!activeCharacterId) return;
+    
+    const mainChar = state.chats[activeCharacterId];
+    const { proxyUrl, apiKey, model } = state.apiConfig;
+    
+    if (!proxyUrl || !apiKey || !model) {
+        showCustomAlert('错误', 'API未配置，无法生成NPC回复');
+        return;
+    }
+    
+    // 获取NPC信息
+    const allNpcs = await db.npcs.toArray();
+    const npcMap = new Map(allNpcs.map(npc => [npc.name, npc]));
+    
+    let npcName, npcPersona;
+    if (conversation.type === 'group') {
+        // 群聊：随机选择一个成员回复
+        const members = conversation.participants;
+        if (members.length === 0) return;
+        const randomMember = members[Math.floor(Math.random() * members.length)];
+        npcName = randomMember.name;
+        const npcData = npcMap.get(npcName);
+        npcPersona = npcData ? npcData.persona : '一个普通的朋友';
+    } else {
+        // 私聊
+        npcName = conversation.participant.name;
+        const npcData = npcMap.get(npcName);
+        npcPersona = npcData ? npcData.persona : '一个普通的朋友';
+    }
+    
+    // 获取最近的对话上下文（最后10条消息）
+    const recentMessages = conversation.messages.slice(-10);
+    const conversationContext = recentMessages.map(msg => {
+        if (msg.sender === charName) {
+            return `${charName}: ${msg.content}`;
+        } else {
+            return `${msg.sender}: ${msg.content}`;
+        }
+    }).join('\n');
+    
+    // 构建提示词（NPC不知道是user发的，以为是角色发的）
+    const systemPrompt = `你是"${npcName}"，正在与"${charName}"聊天。
+
+你的角色设定：
+${npcPersona}
+
+最近的对话记录：
+${conversationContext}
+
+请根据你的角色设定和对话上下文，自然地回复"${charName}"的最后一条消息。
+你的回复应该：
+1. 符合你的角色性格
+2. 回应对方的消息
+3. 简洁自然（1-3句话）
+4. 不要提及"有人用手机"等异常情况（你不知道这件事）
+
+请只返回你的回复内容，不要包含任何其他文字或标记。`;
+
+    try {
+        const messagesForApi = [{ role: 'user', content: '请回复上一条消息' }];
+        let isGemini = proxyUrl.includes('generativelanguage');
+        let responseText = '';
+        
+        if (isGemini) {
+            let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
+            const response = await fetch(geminiConfig.url, geminiConfig.data);
+            const data = await response.json();
+            if (data.candidates && data.candidates[0].content) {
+                responseText = data.candidates[0].content.parts[0].text;
+            }
+        } else {
+            const response = await fetch(`${proxyUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
+                    temperature: 0.8
+                })
+            });
+            const data = await response.json();
+            if (data.choices && data.choices[0]) {
+                responseText = data.choices[0].message.content;
+            }
+        }
+        
+        if (!responseText) {
+            throw new Error('NPC回复生成失败');
+        }
+        
+        // 添加NPC回复到对话记录
+        const npcReply = {
+            sender: npcName,
+            content: responseText.trim(),
+            timestamp: Date.now()
+        };
+        conversation.messages.push(npcReply);
+        
+        // 在UI中显示NPC回复
+        const bodyEl = document.getElementById('char-conversation-messages');
+        const tempChatObjectForRendering = conversation.type === 'group' ? {
+            id: 'temp_group_chat',
+            isGroup: true,
+            name: conversation.groupName,
+            originalName: mainChar.originalName,
+            settings: {
+                ...mainChar.settings,
+                myNickname: mainChar.name,
+                myAvatar: mainChar.settings.aiAvatar,
+                myAvatarFrame: mainChar.settings.aiAvatarFrame,
+            }
+        } : {
+            id: 'temp_npc_chat',
+            isGroup: false,
+            name: conversation.participant.name,
+            originalName: mainChar.originalName,
+            settings: {
+                ...mainChar.settings,
+                myAvatar: mainChar.settings.aiAvatar,
+                myAvatarFrame: mainChar.settings.aiAvatarFrame,
+                aiAvatar: (npcMap.get(npcName) && npcMap.get(npcName).avatar) || defaultGroupMemberAvatar,
+            }
+        };
+        
+        const npcReplyElement = await createMessageElement({
+            role: 'assistant',
+            content: responseText.trim(),
+            senderName: npcName,
+            timestamp: npcReply.timestamp
+        }, tempChatObjectForRendering);
+        
+        if (npcReplyElement) {
+            bodyEl.appendChild(npcReplyElement);
+            bodyEl.scrollTop = bodyEl.scrollHeight;
+        }
+        
+        // 保存对话记录
+        await db.chats.put(mainChar);
+        
+        // 更新聊天列表的最后一条消息显示
+        await renderCharSimulatedQQ();
+        
+    } catch (error) {
+        console.error('生成NPC回复失败:', error);
+        showCustomAlert('错误', '生成NPC回复失败: ' + error.message);
+    }
+}
+
+/**
+ * 【全新】生成角色回复给用户
+ */
+async function generateCharReplyToUser() {
+    if (!activeCharacterId) return;
+    
+    const mainChar = state.chats[activeCharacterId];
+    const { proxyUrl, apiKey, model } = state.apiConfig;
+    
+    if (!proxyUrl || !apiKey || !model) {
+        showCustomAlert('错误', 'API未配置，无法生成回复');
+        return;
+    }
+    
+    // 获取最近的对话上下文（最后10条消息）
+    const recentHistory = mainChar.history.filter(m => !m.isHidden).slice(-10);
+    const conversationContext = recentHistory.map(msg => {
+        if (msg.role === 'user') {
+            const userName = mainChar.settings.myNickname || (state.qzoneSettings.nickname || '用户');
+            return `${userName}: ${typeof msg.content === 'string' ? msg.content : '[复杂消息]'}`;
+        } else {
+            return `${mainChar.name}: ${typeof msg.content === 'string' ? msg.content : '[复杂消息]'}`;
+        }
+    }).join('\n');
+    
+    const charName = mainChar.originalName || mainChar.name;
+    const userDisplayName = mainChar.settings.myNickname || (state.qzoneSettings.nickname || '用户');
+    
+    // 构建提示词（角色知道有人用他手机发了消息，但不知道是谁）
+    const systemPrompt = `你是"${charName}"，你发现有人用你的手机在QQ上向"${userDisplayName}"发送了消息。你不知道是谁发的，但你需要回复这条消息。
+
+你的角色设定：
+${mainChar.settings.aiPersona || ''}
+
+最近的对话记录：
+${conversationContext}
+
+请根据你的角色设定和对话上下文，自然地回复"${userDisplayName}"的最后一条消息。
+你的回复应该：
+1. 符合你的角色性格
+2. 回应对方的消息
+3. 简洁自然（1-3句话）
+4. 可以表达对"有人用你手机发消息"这件事的困惑，但不要过度
+
+请只返回你的回复内容，不要包含任何其他文字或标记。`;
+
+    try {
+        const messagesForApi = [{ role: 'user', content: '请回复上一条消息' }];
+        let isGemini = proxyUrl.includes('generativelanguage');
+        let responseText = '';
+        
+        if (isGemini) {
+            let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
+            const response = await fetch(geminiConfig.url, geminiConfig.data);
+            const data = await response.json();
+            if (data.candidates && data.candidates[0].content) {
+                responseText = data.candidates[0].content.parts[0].text;
+            }
+        } else {
+            const response = await fetch(`${proxyUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
+                    temperature: 0.8
+                })
+            });
+            const data = await response.json();
+            if (data.choices && data.choices[0]) {
+                responseText = data.choices[0].message.content;
+            }
+        }
+        
+        if (!responseText) {
+            throw new Error('角色回复生成失败');
+        }
+        
+        // 添加角色回复到主聊天记录
+        const charReply = {
+            role: 'assistant',
+            content: responseText.trim(),
+            timestamp: Date.now()
+        };
+        mainChar.history.push(charReply);
+        await db.chats.put(mainChar);
+        
+        // 在UI中显示角色回复
+        const bodyEl = document.getElementById('char-conversation-messages');
+        const tempChatObjectForRendering = {
+            id: 'temp_user_chat_mirror',
+            isGroup: false,
+            name: mainChar.name,
+            settings: {
+                ...mainChar.settings,
+                myAvatar: mainChar.settings.aiAvatar,
+                myAvatarFrame: mainChar.settings.aiAvatarFrame,
+                aiAvatar: mainChar.settings.myAvatar,
+                aiAvatarFrame: mainChar.settings.myAvatarFrame
+            }
+        };
+        
+        const charReplyElement = await createMessageElement({
+            role: 'user', // 在角色视角，角色回复显示为user
+            content: responseText.trim(),
+            senderName: charName,
+            timestamp: charReply.timestamp
+        }, tempChatObjectForRendering);
+        
+        if (charReplyElement) {
+            bodyEl.appendChild(charReplyElement);
+            bodyEl.scrollTop = bodyEl.scrollHeight;
+        }
+        
+    } catch (error) {
+        console.error('生成角色回复失败:', error);
+        showCustomAlert('错误', '生成角色回复失败: ' + error.message);
+    }
+}
+
 /**
  * 【全新】关闭模拟聊天记录弹窗
  */
@@ -56625,8 +57616,216 @@ document.getElementById('regenerate-char-qq-btn').addEventListener('click', asyn
 
         
         
-        document.getElementById('char-simulated-send-btn').addEventListener('click', () => {
-            alert("这是模拟对话，无法发送消息哦~");
+        document.getElementById('char-simulated-send-btn').addEventListener('click', async () => {
+            const inputEl = document.getElementById('char-simulated-input');
+            const messageText = inputEl.value.trim();
+            
+            if (!messageText) {
+                return;
+            }
+            
+            // 检查是否有对话
+            if (cphoneActiveConversationIndex === null) {
+                showCustomAlert('提示', '请先选择一个对话');
+                return;
+            }
+            
+            // 清空输入框
+            inputEl.value = '';
+            
+            // 发送消息
+            await sendMessageToNPC(messageText);
+        });
+        
+        // 接受回复按钮
+        document.getElementById('char-simulated-receive-reply-btn').addEventListener('click', async () => {
+            const receiveBtn = document.getElementById('char-simulated-receive-reply-btn');
+            const replyType = receiveBtn.dataset.replyType;
+            
+            if (replyType === 'user') {
+                // 生成角色回复给用户
+                await generateCharReplyToUser();
+            } else {
+                // 生成NPC回复
+                const mainChar = state.chats[activeCharacterId];
+                if (!mainChar || cphoneActiveConversationIndex === null || cphoneActiveConversationIndex === -1) return;
+                const conversation = mainChar.simulatedConversations[cphoneActiveConversationIndex];
+                if (!conversation) return;
+                const charName = mainChar.originalName || mainChar.name;
+                await generateNPCReply(conversation, charName);
+            }
+            
+            // 隐藏按钮
+            receiveBtn.style.display = 'none';
+        });
+        
+        // 转账按钮
+        document.getElementById('char-simulated-transfer-btn').addEventListener('click', async () => {
+            if (cphoneActiveConversationIndex === null) {
+                showCustomAlert('提示', '请先选择一个对话');
+                return;
+            }
+            
+            const mainChar = state.chats[activeCharacterId];
+            if (!mainChar) return;
+            
+            // 获取接收方名称
+            let receiverName = '';
+            if (cphoneActiveConversationIndex === -1) {
+                receiverName = mainChar.settings.myNickname || (state.qzoneSettings.nickname || '用户');
+            } else {
+                const conversation = mainChar.simulatedConversations[cphoneActiveConversationIndex];
+                if (!conversation) return;
+                receiverName = conversation.type === 'group' ? conversation.groupName : conversation.participant.name;
+            }
+            
+            // 显示转账输入框
+            const amount = prompt(`向 ${receiverName} 转账金额：`, '0.00');
+            if (!amount) return;
+            
+            const transferAmount = parseFloat(amount);
+            if (isNaN(transferAmount) || transferAmount <= 0) {
+                showCustomAlert('错误', '请输入有效的金额');
+                return;
+            }
+            
+            // 检查Cphone钱包余额（使用角色的simulatedWallet）
+            const charWallet = mainChar.simulatedWallet || { balance: 0, transactions: [] };
+            const currentBalance = charWallet.balance || 0;
+            
+            if (currentBalance < transferAmount) {
+                showCustomAlert('错误', `余额不足！当前余额：¥${currentBalance.toFixed(2)}`);
+                return;
+            }
+            
+            // 扣除Cphone钱包余额并添加流水
+            if (!mainChar.simulatedWallet) {
+                mainChar.simulatedWallet = { balance: 0, transactions: [] };
+            }
+            
+            mainChar.simulatedWallet.balance = (mainChar.simulatedWallet.balance || 0) - transferAmount;
+            if (!mainChar.simulatedWallet.transactions) {
+                mainChar.simulatedWallet.transactions = [];
+            }
+            mainChar.simulatedWallet.transactions.push({
+                title: `QQ转账给${receiverName}`,
+                amount: -transferAmount,
+                description: `向${receiverName}转账`,
+                timestamp: Date.now()
+            });
+            
+            // 保存角色数据
+            await db.chats.put(mainChar);
+            
+            // 更新Cphone钱包显示（如果钱包页面打开的话）
+            if (typeof renderCharCWallet === 'function') {
+                renderCharCWallet();
+            }
+            
+            // 在对话中显示转账消息
+            const charName = mainChar.originalName || mainChar.name;
+            const transferMessage = {
+                sender: charName,
+                content: `[转账] ¥${transferAmount.toFixed(2)}`,
+                type: 'transfer',
+                amount: transferAmount,
+                timestamp: Date.now(),
+                sentByUser: true
+            };
+            
+            const bodyEl = document.getElementById('char-conversation-messages');
+            
+            if (cphoneActiveConversationIndex === -1) {
+                // 发送给用户 - 这是角色给用户转账
+                mainChar.history.push({
+                    role: 'assistant', // 角色发的转账
+                    type: 'transfer',
+                    amount: transferAmount,
+                    senderName: charName,
+                    receiverName: receiverName,
+                    timestamp: transferMessage.timestamp
+                });
+                await db.chats.put(mainChar);
+                
+                const tempChatObjectForRendering = {
+                    id: 'temp_user_chat_mirror',
+                    isGroup: false,
+                    name: mainChar.name,
+                    settings: {
+                        ...mainChar.settings,
+                        myAvatar: mainChar.settings.aiAvatar,
+                        myAvatarFrame: mainChar.settings.aiAvatarFrame,
+                        aiAvatar: mainChar.settings.myAvatar,
+                        aiAvatarFrame: mainChar.settings.myAvatarFrame
+                    }
+                };
+                
+                const transferElement = await createMessageElement({
+                    role: 'user', // 在角色视角，角色发送的消息显示为user
+                    type: 'transfer',
+                    amount: transferAmount,
+                    senderName: charName,
+                    receiverName: receiverName,
+                    timestamp: transferMessage.timestamp
+                }, tempChatObjectForRendering);
+                
+                if (transferElement) {
+                    bodyEl.appendChild(transferElement);
+                    bodyEl.scrollTop = bodyEl.scrollHeight;
+                }
+            } else {
+                // 发送给NPC
+                const conversation = mainChar.simulatedConversations[cphoneActiveConversationIndex];
+                if (!conversation.messages) conversation.messages = [];
+                conversation.messages.push(transferMessage);
+                await db.chats.put(mainChar);
+                
+                const tempChatObjectForRendering = conversation.type === 'group' ? {
+                    id: 'temp_group_chat',
+                    isGroup: true,
+                    name: conversation.groupName,
+                    originalName: mainChar.originalName,
+                    settings: {
+                        ...mainChar.settings,
+                        myNickname: mainChar.name,
+                        myAvatar: mainChar.settings.aiAvatar,
+                        myAvatarFrame: mainChar.settings.aiAvatarFrame,
+                    }
+                } : {
+                    id: 'temp_npc_chat',
+                    isGroup: false,
+                    name: conversation.participant.name,
+                    originalName: mainChar.originalName,
+                    settings: {
+                        ...mainChar.settings,
+                        myAvatar: mainChar.settings.aiAvatar,
+                        myAvatarFrame: mainChar.settings.aiAvatarFrame,
+                    }
+                };
+                
+                const transferElement = await createMessageElement({
+                    role: 'user',
+                    type: 'transfer',
+                    amount: transferAmount,
+                    senderName: charName,
+                    timestamp: transferMessage.timestamp
+                }, tempChatObjectForRendering);
+                
+                if (transferElement) {
+                    bodyEl.appendChild(transferElement);
+                    bodyEl.scrollTop = bodyEl.scrollHeight;
+                }
+            }
+            
+            showCustomAlert('成功', `已向 ${receiverName} 转账 ¥${transferAmount.toFixed(2)}`);
+        });
+        
+        // 支持回车发送
+        document.getElementById('char-simulated-input').addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const sendBtn = document.getElementById('char-simulated-send-btn');
+                sendBtn.click();
+            }
         });
 
           
@@ -57871,133 +59070,21 @@ ${userPersona.trim()}
     // 当前钱包视图状态
     let currentWalletView = 'user';
 
-    // 生成用户余额和角色余额（双钱包系统）
+    // 生成用户余额和角色余额（已禁用API生成，仅做初始化检查）
     async function generateAllBalances() {
-        const generateBtn = document.getElementById('generate-wallet-balance-btn');
+        console.log('API生成余额功能已禁用。');
         
-        // 显示加载提示
-        let loadingAlert = null;
-        if (typeof showCustomAlert === 'function') {
-            loadingAlert = showCustomAlert('生成中', '正在生成余额数据，请稍候...', 0);
+        const walletData = getWalletData();
+        let changed = false;
+        
+        if (!walletData.userWallet) {
+            walletData.userWallet = { balance: 0, transactions: [] };
+            changed = true;
         }
         
-        try {
-            generateBtn.style.opacity = '0.5';
-            generateBtn.style.pointerEvents = 'none';
-            
-            const walletData = getWalletData();
-            const userSelect = document.getElementById('wallet-user-select');
-            const selectedChatId = userSelect ? userSelect.value : '';
-            
-            // 确保数据结构正确
-            if (!walletData.userWallet) {
-                walletData.userWallet = { balance: 0, transactions: [] };
-            }
-            if (!walletData.roleWallets) {
-                walletData.roleWallets = {};
-            }
-            
-            // 获取人设信息
-            let userPersona = '';
-            let characterPersona = '';
-            let characterName = '';
-            
-            if (selectedChatId) {
-                const currentState = typeof state !== 'undefined' ? state : (typeof window !== 'undefined' && window.state ? window.state : null);
-                if (currentState && currentState.chats && currentState.chats[selectedChatId]) {
-                    const chat = currentState.chats[selectedChatId];
-                    userPersona = chat.settings?.myPersona || '';
-                    characterPersona = chat.settings?.aiPersona || chat.settings?.characterPersona || '';
-                    characterName = chat.name || chat.settings?.characterName || '对方';
-                    
-                    if (userPersona || characterPersona) {
-                        console.log('使用选中聊天的人设生成余额:', chat.name);
-                        console.log('- 用户人设长度:', userPersona.length);
-                        console.log('- 角色人设长度:', characterPersona.length);
-                    }
-                }
-            }
-            
-            // 生成 Promise 列表
-            const promises = [];
-            
-            // 1. 生成用户余额（独立钱包）
-            promises.push(generateBalanceViaAPI(null, null, userPersona).then(balance => {
-                // 初始化用户钱包
-                walletData.userWallet.balance = balance;
-                // 生成用户初始流水（如果还没有流水）
-                if (!walletData.userWallet.transactions || walletData.userWallet.transactions.length === 0) {
-                    walletData.userWallet.transactions = [{
-                        type: 'income',
-                        title: '初始余额',
-                        amount: balance,
-                        timestamp: new Date().toISOString()
-                    }];
-                }
-                console.log(`用户余额生成成功: ${balance}`);
-                return balance;
-            }).catch(e => {
-                console.error('用户余额生成失败:', e);
-                throw e; // 用户余额生成失败应该中断流程
-            }));
-            
-            // 2. 如果选中了角色，生成角色余额（独立钱包）
-            if (selectedChatId && characterName) {
-                console.log(`正在请求生成角色余额，角色名: ${characterName}`);
-                promises.push(generateBalanceViaAPI(characterName, characterPersona, null).then(balance => {
-                    // 初始化角色钱包（完全独立）
-                    if (!walletData.roleWallets[selectedChatId]) {
-                        walletData.roleWallets[selectedChatId] = {
-                            balance: 0,
-                            transactions: []
-                        };
-                    }
-                    
-                    walletData.roleWallets[selectedChatId].balance = balance;
-                    
-                    // 生成角色初始流水（如果还没有流水）
-                    if (!walletData.roleWallets[selectedChatId].transactions || walletData.roleWallets[selectedChatId].transactions.length === 0) {
-                        walletData.roleWallets[selectedChatId].transactions = [{
-                            type: 'income',
-                            title: '初始余额',
-                            amount: balance,
-                            timestamp: new Date().toISOString()
-                        }];
-                    }
-                    
-                    console.log(`角色 ${characterName} 余额生成成功: ${balance}`);
-                    return balance;
-                }).catch(e => {
-                    console.error(`角色余额生成失败: ${characterName}`, e);
-                    // 角色余额生成失败不影响用户余额，但记录错误
-                    if (typeof showCustomAlert === 'function') {
-                        showCustomAlert('部分失败', `用户余额已生成，但角色余额生成失败: ${e.message}`);
-                    }
-                    return 0;
-                }));
-            }
-            
-            // 等待所有生成完成
-            await Promise.all(promises);
-            
-            // 保存数据
+        if (changed) {
             saveWalletData(walletData);
-            
-            // 重新渲染页面
             await renderWalletScreen();
-            
-            if (loadingAlert && typeof loadingAlert.close === 'function') loadingAlert.close();
-            if (typeof showCustomAlert === 'function') showCustomAlert('成功', '余额已生成！');
-            else alert('余额已生成！');
-            
-        } catch (error) {
-            console.error('生成余额过程出错:', error);
-            if (loadingAlert && typeof loadingAlert.close === 'function') loadingAlert.close();
-            if (typeof showCustomAlert === 'function') showCustomAlert('错误', `生成余额失败: ${error.message}`);
-            else alert(`生成余额失败: ${error.message}`);
-        } finally {
-            generateBtn.style.opacity = '1';
-            generateBtn.style.pointerEvents = 'auto';
         }
     }
     
@@ -58006,90 +59093,17 @@ ${userPersona.trim()}
         const walletData = getWalletData();
         
         // 获取UI元素
-        const userSelect = document.getElementById('wallet-user-select');
         const balanceLabel = document.getElementById('wallet-balance-label');
         const balanceAmount = document.getElementById('wallet-user-balance');
-        const switchBtn = document.getElementById('switch-wallet-view-btn');
         
-        // 填充用户选择器
-        if (userSelect) {
-            const currentValue = userSelect.value;
-            userSelect.innerHTML = '<option value="">-- 选择聊天（使用该聊天中的人设生成余额）--</option>';
-            
-            const chats = [];
-            const currentState = typeof state !== 'undefined' ? state : (typeof window !== 'undefined' && window.state ? window.state : null);
-            if (currentState && currentState.chats) {
-                const allChats = Object.values(currentState.chats);
-                for (const chat of allChats) {
-                    if (chat) {
-                        const chatName = chat.name || chat.settings?.characterName || '未命名聊天';
-                        const myPersona = chat.settings?.myPersona || '';
-                        chats.push({ id: chat.id, name: chatName, myPersona: myPersona });
-                    }
-                }
-            }
-            
-            for (const chat of chats) {
-                const option = document.createElement('option');
-                option.value = chat.id;
-                option.textContent = chat.name + (chat.myPersona ? ' (有人设)' : '');
-                if (option.value === currentValue) option.selected = true;
-                userSelect.appendChild(option);
-            }
-        }
+        // 强制使用用户视图
+        currentWalletView = 'user';
         
-        const selectedChatId = userSelect ? userSelect.value : '';
-        
-        // 处理视图切换逻辑
-        if (!selectedChatId) {
-            currentWalletView = 'user'; // 未选角色强制回用户视图
-            if (switchBtn) switchBtn.style.display = 'none';
-        } else {
-            if (switchBtn) {
-                switchBtn.style.display = 'block';
-                switchBtn.textContent = currentWalletView === 'user' ? '切换到对方钱包' : '切换到我的钱包';
-            }
-        }
-        
-        // 准备显示数据（分别读取用户钱包和角色钱包）
-        let displayBalance = 0;
-        let displayTransactions = [];
-        let displayName = '我的余额';
-        
-        if (currentWalletView === 'user') {
-            // 读取用户钱包（完全独立）
-            const userWallet = walletData.userWallet || { balance: 0, transactions: [] };
-            displayBalance = userWallet.balance || 0;
-            displayTransactions = userWallet.transactions || [];
-            displayName = '我的余额';
-        } else {
-            // 读取角色钱包（完全独立）
-            const currentState = typeof state !== 'undefined' ? state : (typeof window !== 'undefined' && window.state ? window.state : null);
-            const chatName = currentState?.chats[selectedChatId]?.name || '对方';
-            displayName = `${chatName}的余额`;
-            
-            // 从 roleWallets 读取（不是 characters）
-            const roleWallets = walletData.roleWallets || {};
-            if (roleWallets[selectedChatId]) {
-                const roleWallet = roleWallets[selectedChatId];
-                displayBalance = roleWallet.balance || 0;
-                displayTransactions = roleWallet.transactions || [];
-            } else {
-                // 兼容旧数据：尝试从 characters 读取并迁移
-                if (walletData.characters && walletData.characters[selectedChatId]) {
-                    const oldCharData = walletData.characters[selectedChatId];
-                    if (!roleWallets[selectedChatId]) {
-                        roleWallets[selectedChatId] = {
-                            balance: oldCharData.balance || 0,
-                            transactions: oldCharData.transactions || []
-                        };
-                        saveWalletData(walletData);
-                    }
-                    displayBalance = roleWallets[selectedChatId].balance || 0;
-                    displayTransactions = roleWallets[selectedChatId].transactions || [];
-                }
-            }
-        }
+        // 准备显示数据（只显示用户钱包）
+        const userWallet = walletData.userWallet || { balance: 0, transactions: [] };
+        const displayBalance = userWallet.balance || 0;
+        const displayTransactions = userWallet.transactions || [];
+        const displayName = '我的余额';
         
         // 更新UI
         if (balanceLabel) balanceLabel.textContent = displayName;
@@ -58130,60 +59144,31 @@ ${userPersona.trim()}
         }
     }
     
-    // 添加交易记录（双钱包系统：分别写入用户钱包或角色钱包）
+    // 添加交易记录（仅用户钱包）
     function addWalletTransaction(transaction) {
         const walletData = getWalletData();
-        const userSelect = document.getElementById('wallet-user-select');
-        const selectedChatId = userSelect ? userSelect.value : '';
 
         // 确保数据结构正确
         if (!walletData.userWallet) {
             walletData.userWallet = { balance: 0, transactions: [] };
         }
-        if (!walletData.roleWallets) {
-            walletData.roleWallets = {};
-        }
 
-        // 根据当前视图决定添加到谁的钱包（完全独立）
-        if (currentWalletView === 'char' && selectedChatId) {
-            // 添加到角色钱包（完全独立）
-            if (!walletData.roleWallets[selectedChatId]) {
-                walletData.roleWallets[selectedChatId] = { balance: 0, transactions: [] };
-            }
-            
-            const roleWallet = walletData.roleWallets[selectedChatId];
-            roleWallet.transactions.push({
-                ...transaction,
-                timestamp: transaction.timestamp || new Date().toISOString()
-            });
-            
-            // 更新角色余额
-            const currentBalance = roleWallet.balance || 0;
-            if (transaction.type === 'income') {
-                roleWallet.balance = currentBalance + transaction.amount;
-            } else if (transaction.type === 'expense') {
-                roleWallet.balance = currentBalance - transaction.amount;
-            }
-            
-            console.log(`已添加交易到角色钱包 ${selectedChatId}:`, transaction);
-        } else {
-            // 添加到用户钱包（完全独立）
-            const userWallet = walletData.userWallet;
-            userWallet.transactions.push({
-                ...transaction,
-                timestamp: transaction.timestamp || new Date().toISOString()
-            });
-            
-            // 更新用户余额
-            const currentBalance = userWallet.balance || 0;
-            if (transaction.type === 'income') {
-                userWallet.balance = currentBalance + transaction.amount;
-            } else if (transaction.type === 'expense') {
-                userWallet.balance = currentBalance - transaction.amount;
-            }
-            
-            console.log(`已添加交易到用户钱包:`, transaction);
+        // 添加到用户钱包
+        const userWallet = walletData.userWallet;
+        userWallet.transactions.push({
+            ...transaction,
+            timestamp: transaction.timestamp || new Date().toISOString()
+        });
+        
+        // 更新用户余额
+        const currentBalance = userWallet.balance || 0;
+        if (transaction.type === 'income') {
+            userWallet.balance = currentBalance + transaction.amount;
+        } else if (transaction.type === 'expense') {
+            userWallet.balance = currentBalance - transaction.amount;
         }
+        
+        console.log(`已添加交易到用户钱包:`, transaction);
         
         saveWalletData(walletData);
     }
@@ -58389,6 +59374,49 @@ ${userPersona.trim()}
         }
     }
     
+    // 强制同步 coins 与 钱包系统
+    if (window.cabinGachaState) {
+        try {
+            // 如果 coins 已经是普通属性，先删除
+            // 注意：delete 操作符对 configurable: false 的属性无效，但这里的属性通常是可配置的
+            // 我们通过重新定义来接管
+            
+            Object.defineProperty(window.cabinGachaState, 'coins', {
+                get: function() {
+                    try {
+                        // 防止 getWalletData 未定义 (如果脚本加载顺序问题)
+                        if (typeof getWalletData !== 'function') return 0;
+                        
+                        const w = getWalletData();
+                        return (w.userWallet && w.userWallet.balance !== undefined) ? w.userWallet.balance : 0;
+                    } catch(e) { return 0; }
+                },
+                set: function(val) {
+                    try {
+                        if (typeof getWalletData !== 'function' || typeof addWalletTransaction !== 'function') return;
+                        
+                        const w = getWalletData();
+                        const current = (w.userWallet && w.userWallet.balance !== undefined) ? w.userWallet.balance : 0;
+                        const diff = val - current;
+                        
+                        if (Math.abs(diff) >= 0.01) {
+                            addWalletTransaction({
+                                type: diff > 0 ? 'income' : 'expense',
+                                title: diff > 0 ? '其他收入 (游戏/探险)' : '其他消费 (种植/购买)',
+                                amount: Math.abs(diff),
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                    } catch(e) { console.error('Wallet sync error:', e); }
+                },
+                configurable: true,
+                enumerable: true
+            });
+        } catch (e) {
+            console.error('Init wallet sync failed:', e);
+        }
+    }
+    
     // 当前扭蛋机类型
     window.currentGachaMachine = 'furniture';
     
@@ -58483,25 +59511,18 @@ ${userPersona.trim()}
     function updateCabinUI() {
         const state = window.cabinGachaState;
         
-        // 钱包数据初始化与同步
-        if (!state.wallets) {
-            state.wallets = {
-                'user': {
-                    balance: state.coins || 0,
-                    transactions: [
-                        { desc: "初始资金", amount: state.coins || 0, date: new Date().toISOString() }
-                    ]
-                }
-            };
-        }
-        // 双向同步：金币消耗主要通过 state.coins，所以这里将 state.coins 同步回钱包
-        // 注意：如果我们在钱包界面修改了余额，也应该同步回 state.coins
-        if (state.wallets['user']) {
-            state.wallets['user'].balance = state.coins;
+        // 从主钱包同步余额到扭蛋机状态
+        try {
+            const walletData = getWalletData();
+            if (walletData && walletData.userWallet) {
+                state.coins = walletData.userWallet.balance || 0;
+            }
+        } catch (e) {
+            console.error('同步钱包余额失败:', e);
         }
         
         const coinEl = document.getElementById('cabin-coin-count');
-        if (coinEl) coinEl.textContent = state.coins;
+        if (coinEl) coinEl.textContent = state.coins.toFixed(2);
         
         const ownedCount = Object.keys(state.catalog).filter(id => state.catalog[id]?.owned).length;
         const totalCount = Object.keys(state.customItems).length;
@@ -58535,13 +59556,24 @@ ${userPersona.trim()}
     // 普通扭蛋
     function playNormalGacha() {
         const state = window.cabinGachaState;
-        if (state.coins < 10) {
-            alert('金币不足 (需10)');
+        
+        // 检查余额 (从主钱包)
+        const walletData = getWalletData();
+        const currentBalance = walletData.userWallet ? walletData.userWallet.balance : 0;
+        
+        if (currentBalance < 10) {
+            alert('余额不足 (需10元)');
             return;
         }
         
-        state.coins -= 10;
-        saveCabinGachaData();
+        // 扣除费用
+        addWalletTransaction({
+            type: 'expense',
+            title: '扭蛋机消费',
+            amount: 10,
+            timestamp: new Date().toISOString()
+        });
+        
         updateCabinUI();
         
         const glassId = window.currentGachaMachine === 'furniture' ? 'furniture-capsules-visual' : 'clothes-capsules-visual';
@@ -58563,8 +59595,15 @@ ${userPersona.trim()}
             
             if (pool.length === 0) {
                 alert('当前扭蛋池为空! 请先使用AI生成物品。');
-                state.coins += 10;
-                saveCabinGachaData();
+                
+                // 退款
+                addWalletTransaction({
+                    type: 'income',
+                    title: '扭蛋机退款 (奖池为空)',
+                    amount: 10,
+                    timestamp: new Date().toISOString()
+                });
+                
                 updateCabinUI();
                 if (glass) glass.innerHTML = '<div style="font-size:30px; margin-top:30px;">🎁</div>';
                 return;
@@ -58605,13 +59644,24 @@ ${userPersona.trim()}
     // 十连抽
     function playTenGacha() {
         const state = window.cabinGachaState;
-        if (state.coins < 100) {
-            alert('金币不足 (需100)');
+        
+        // 检查余额 (从主钱包)
+        const walletData = getWalletData();
+        const currentBalance = walletData.userWallet ? walletData.userWallet.balance : 0;
+        
+        if (currentBalance < 100) {
+            alert('余额不足 (需100元)');
             return;
         }
         
-        state.coins -= 100;
-        saveCabinGachaData();
+        // 扣除费用
+        addWalletTransaction({
+            type: 'expense',
+            title: '扭蛋机十连抽',
+            amount: 100,
+            timestamp: new Date().toISOString()
+        });
+        
         updateCabinUI();
         
         const glassId = window.currentGachaMachine === 'furniture' ? 'furniture-capsules-visual' : 'clothes-capsules-visual';
@@ -58632,8 +59682,15 @@ ${userPersona.trim()}
             
             if (pool.length === 0) {
                 alert('当前扭蛋池为空! 请先使用AI生成物品。');
-                state.coins += 100;
-                saveCabinGachaData();
+                
+                // 退款
+                addWalletTransaction({
+                    type: 'income',
+                    title: '扭蛋机退款 (奖池为空)',
+                    amount: 100,
+                    timestamp: new Date().toISOString()
+                });
+                
                 updateCabinUI();
                 if (glass) glass.innerHTML = '<div style="font-size:30px; margin-top:30px;">🎁</div>';
                 return;
@@ -67078,25 +68135,25 @@ async function generateWalletDataAPI(charId) {
     
     function setupPetClickHandler() {
         const petDisplayArea = document.querySelector('.pet-display-area');
-        const petSprite = document.getElementById('pet-sprite');
+        const eggLayer = document.getElementById('egg-layer');
+        const sealLayer = document.getElementById('seal-layer');
         
-        if (petDisplayArea && petSprite) {
+        if (petDisplayArea) {
             petDisplayArea.addEventListener('click', () => {
                 if (!petGameState.isHatched) {
                     // 孵化动画
-                    petSprite.style.transform = 'scale(1.2)';
-                    petSprite.style.transition = 'transform 0.3s ease';
+                    if (eggLayer) {
+                        eggLayer.classList.remove('egg-shake');
+                        void eggLayer.offsetWidth; // trigger reflow
+                        eggLayer.classList.add('egg-shake');
+                    }
                     
                     setTimeout(() => {
                         petGameState.isHatched = true;
                         updatePetGameUI();
+                        if (sealLayer) sealLayer.classList.add('pop-up');
                         showPetBubble('哇！豆芝麻海豹出生了！🦭✨', 3000);
-                        
-                        // 恢复动画
-                        setTimeout(() => {
-                            petSprite.style.transform = '';
-                        }, 300);
-                    }, 300);
+                    }, 500);
                 }
             });
         }
@@ -67107,16 +68164,18 @@ async function generateWalletDataAPI(charId) {
         if (!pet) return;
         
         // 更新宠物显示
-        const petSprite = document.getElementById('pet-sprite');
-        if (petSprite) {
+        const eggLayer = document.getElementById('egg-layer');
+        const sealLayer = document.getElementById('seal-layer');
+        
+        if (eggLayer && sealLayer) {
             if (petGameState.isHatched) {
                 // 已孵化，显示海豹
-                petSprite.textContent = pet.hatchedEmoji || '🦭';
-                petSprite.classList.remove('egg');
+                eggLayer.style.display = 'none';
+                sealLayer.style.display = 'block';
             } else {
                 // 未孵化，显示蛋
-                petSprite.textContent = '🥚';
-                petSprite.classList.add('egg');
+                eggLayer.style.display = 'block';
+                sealLayer.style.display = 'none';
             }
         }
         
@@ -72748,7 +73807,234 @@ SVG要求（重要：必须是像素风格）：
                 console.log('聊天窗口已恢复');
             }
 
+            // ========== 悬浮聊天按钮（可拖动） ==========
+            let floatingBtn = null;
+            let isDraggingBtn = false;
+            let btnDragStartX = 0;
+            let btnDragStartY = 0;
+            let btnStartX = 0;
+            let btnStartY = 0;
+
+            function createFloatingChatButton() {
+                console.log('尝试创建悬浮按钮...');
+                
+                // 如果按钮已存在，直接返回
+                floatingBtn = document.getElementById('floating-chat-toggle-btn');
+                if (floatingBtn) {
+                    console.log('悬浮按钮已存在，直接显示');
+                    floatingBtn.style.display = 'flex';
+                    floatingBtn.style.visibility = 'visible';
+                    floatingBtn.style.opacity = '1';
+                    return floatingBtn;
+                }
+
+                console.log('创建新的悬浮按钮');
+                // 创建悬浮按钮
+                floatingBtn = document.createElement('button');
+                floatingBtn.id = 'floating-chat-toggle-btn';
+                floatingBtn.innerHTML = '💬';
+                floatingBtn.title = '打开聊天窗口（可拖动）';
+                
+                // 确保样式正确
+                floatingBtn.style.cssText = `
+                    position: fixed !important;
+                    width: 56px !important;
+                    height: 56px !important;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 50% !important;
+                    font-size: 24px !important;
+                    cursor: move !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    z-index: 10500 !important;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+                    transition: transform 0.2s, box-shadow 0.2s !important;
+                    pointer-events: auto !important;
+                    user-select: none !important;
+                    -webkit-user-select: none !important;
+                    -webkit-user-drag: none !important;
+                    touch-action: none !important;
+                    top: 60px;
+                    right: 10px;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                `;
+                
+                // 添加到body
+                document.body.appendChild(floatingBtn);
+                console.log('悬浮按钮已添加到body，位置:', floatingBtn.getBoundingClientRect());
+                
+                // 添加点击事件（切换聊天窗口）
+                floatingBtn.addEventListener('click', function(e) {
+                    // 如果正在拖拽，不触发点击
+                    if (isDraggingBtn) {
+                        return;
+                    }
+                    console.log('悬浮按钮被点击，切换聊天窗口');
+                    toggleFloatingChat();
+                });
+                
+                // 添加拖拽功能
+                floatingBtn.addEventListener('mousedown', startBtnDrag);
+                floatingBtn.addEventListener('touchstart', startBtnDrag, { passive: false });
+                
+                console.log('✅ 悬浮聊天按钮创建完成');
+                return floatingBtn;
+            }
+
+            function startBtnDrag(e) {
+                console.log('开始拖拽按钮', e.type);
+                
+                // 阻止默认行为和冒泡
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const touch = e.type === 'touchstart' ? e.touches[0] : e;
+                btnDragStartX = touch.clientX;
+                btnDragStartY = touch.clientY;
+                
+                const rect = floatingBtn.getBoundingClientRect();
+                btnStartX = rect.left;
+                btnStartY = rect.top;
+                
+                console.log('起始位置:', { x: btnStartX, y: btnStartY });
+                
+                // 标记为可能拖拽
+                isDraggingBtn = false; // 先设为false，如果移动距离足够大才设为true
+                
+                floatingBtn.classList.add('dragging');
+                
+                // 监听移动和结束事件
+                document.addEventListener('mousemove', onBtnDrag, { capture: true });
+                document.addEventListener('touchmove', onBtnDrag, { passive: false, capture: true });
+                document.addEventListener('mouseup', stopBtnDrag, { capture: true });
+                document.addEventListener('touchend', stopBtnDrag, { capture: true });
+            }
+
+            function onBtnDrag(e) {
+                // 阻止默认行为（防止滚动等）
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const touch = e.type === 'touchmove' ? e.touches[0] : e;
+                const currentX = touch.clientX;
+                const currentY = touch.clientY;
+                
+                const deltaX = currentX - btnDragStartX;
+                const deltaY = currentY - btnDragStartY;
+                
+                // 如果移动距离超过5px，认为是拖拽
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    isDraggingBtn = true;
+                    // 拖拽时禁用过渡动画
+                    floatingBtn.style.transition = 'none';
+                }
+                
+                if (isDraggingBtn) {
+                    let newX = btnStartX + deltaX;
+                    let newY = btnStartY + deltaY;
+                    
+                    // 边界限制
+                    const maxX = window.innerWidth - floatingBtn.offsetWidth;
+                    const maxY = window.innerHeight - floatingBtn.offsetHeight;
+                    
+                    newX = Math.max(0, Math.min(newX, maxX));
+                    newY = Math.max(0, Math.min(newY, maxY));
+                    
+                    console.log('拖拽中:', { x: newX, y: newY, deltaX, deltaY, maxX, maxY });
+                    
+                    // 先清除right和bottom
+                    floatingBtn.style.right = 'auto';
+                    floatingBtn.style.bottom = 'auto';
+                    // 再设置left和top
+                    floatingBtn.style.left = newX + 'px';
+                    floatingBtn.style.top = newY + 'px';
+                }
+            }
+
+            function stopBtnDrag(e) {
+                console.log('停止拖拽', isDraggingBtn);
+                
+                floatingBtn.classList.remove('dragging');
+                
+                // 恢复过渡动画
+                floatingBtn.style.transition = 'transform 0.2s, box-shadow 0.2s';
+                
+                // 如果拖拽距离很小，触发点击事件
+                if (!isDraggingBtn) {
+                    console.log('拖拽距离太小，视为点击');
+                    const touch = e.type === 'touchend' ? (e.changedTouches && e.changedTouches[0]) : e;
+                    if (touch) {
+                        const deltaX = touch.clientX - btnDragStartX;
+                        const deltaY = touch.clientY - btnDragStartY;
+                        
+                        if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) {
+                            // 视为点击，切换聊天窗口
+                            toggleFloatingChat();
+                        }
+                    }
+                }
+                
+                isDraggingBtn = false;
+                
+                // 移除事件监听（注意要用相同的参数）
+                document.removeEventListener('mousemove', onBtnDrag, { capture: true });
+                document.removeEventListener('touchmove', onBtnDrag, { capture: true });
+                document.removeEventListener('mouseup', stopBtnDrag, { capture: true });
+                document.removeEventListener('touchend', stopBtnDrag, { capture: true });
+                
+                console.log('拖拽结束，最终位置:', floatingBtn.getBoundingClientRect());
+            }
+
+            // 当进入观影室时创建悬浮按钮
+            const btnMovieScreen = document.getElementById('movie-screen');
+            const movieScreenObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        const screen = document.getElementById('movie-screen');
+                        if (screen && screen.classList.contains('active')) {
+                            // 进入观影室，创建悬浮按钮
+                            console.log('观影室已激活，创建悬浮按钮');
+                            createFloatingChatButton();
+                        } else {
+                            // 离开观影室，隐藏悬浮按钮
+                            console.log('离开观影室，隐藏悬浮按钮');
+                            if (floatingBtn) {
+                                floatingBtn.style.display = 'none';
+                            }
+                        }
+                    }
+                });
+            });
+            
+            if (btnMovieScreen) {
+                movieScreenObserver.observe(btnMovieScreen, { attributes: true });
+                console.log('悬浮按钮observer已设置');
+                // 如果已经在观影室，立即创建按钮
+                if (btnMovieScreen.classList.contains('active')) {
+                    console.log('初始化时已在观影室，立即创建悬浮按钮');
+                    setTimeout(() => createFloatingChatButton(), 100);
+                }
+            }
+
             function toggleFloatingChat() {
+                // 确保悬浮按钮存在
+                if (!floatingBtn) {
+                    floatingBtn = createFloatingChatButton();
+                }
+                
+                // 更新按钮状态
+                if (chatScreen.classList.contains('active') && chatScreen.classList.contains('floating-chat-window')) {
+                    // 聊天窗口将关闭，移除chat-open状态
+                    floatingBtn.classList.remove('chat-open');
+                } else {
+                    // 聊天窗口将打开，添加chat-open状态
+                    floatingBtn.classList.add('chat-open');
+                }
+                
                 if (chatScreen.classList.contains('active') && chatScreen.classList.contains('floating-chat-window')) {
                     // 关闭悬浮聊天
                     chatScreen.classList.remove('active');
@@ -72858,6 +74144,15 @@ SVG要求（重要：必须是像素风格）：
                     movieVideo.addEventListener('play', () => isPaused = false);
                 }
             }
+            
+            // 页面加载完成后，检查是否在观影室
+            setTimeout(() => {
+                const screen = document.getElementById('movie-screen');
+                if (screen && screen.classList.contains('active')) {
+                    console.log('页面加载完成，检测到在观影室，创建悬浮按钮');
+                    createFloatingChatButton();
+                }
+            }, 1000);
             
         })();
      </script>
