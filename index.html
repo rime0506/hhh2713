@@ -42654,10 +42654,24 @@ ${historySlice.map(msg => `${msg.role === 'user' ? myNickname : chat.name}: ${St
 `;
         
  
-const messagesPayload = historySlice.map(msg => ({
-    role: msg.role,
-    content: `${msg.role === 'user' ? myNickname : chat.name}: ${String(msg.content)}`
-}));
+const messagesPayload = historySlice.map(msg => {
+    let role = msg.role;
+    let contentPrefix = msg.role === 'user' ? myNickname : chat.name;
+    
+    // 强制将 system 角色转换为 user 角色，避免API报错 (500)
+    if (role === 'system') {
+        role = 'user';
+        contentPrefix = '[系统通知]';
+    } else if (role !== 'user' && role !== 'assistant') {
+        // 其他未知角色也转为 user
+        role = 'user';
+    }
+
+    return {
+        role: role,
+        content: `${contentPrefix}: ${String(msg.content)}`
+    };
+});
         
         let isGemini = proxyUrl.includes('generativelanguage');
         let geminiConfig = null;
@@ -42969,6 +42983,7 @@ async function openCharSimulatedConversation(conversationIndex) {
 
         const tempMessageObject = {
             role: role,
+            isHidden: msg.isHidden,
             senderName: msg.sender || (role === 'user' ? tempChatObjectForRendering.settings.myNickname : tempChatObjectForRendering.name),
             timestamp: msg.timestamp || (Date.now() + Math.random()) 
         };
@@ -57745,6 +57760,15 @@ document.getElementById('regenerate-char-qq-btn').addEventListener('click', asyn
                     receiverName: receiverName,
                     timestamp: transferMessage.timestamp
                 });
+                
+                // [新增] 添加隐藏的系统通知，告知AI这是用户操作的
+                mainChar.history.push({
+                    role: 'system',
+                    content: `[系统通知：用户操作你的手机，给自己（${receiverName}）转账了 ${transferAmount} 元。这并非你本人的操作。]`,
+                    timestamp: Date.now(),
+                    isHidden: true
+                });
+
                 await db.chats.put(mainChar);
                 
                 const tempChatObjectForRendering = {
@@ -57778,6 +57802,15 @@ document.getElementById('regenerate-char-qq-btn').addEventListener('click', asyn
                 const conversation = mainChar.simulatedConversations[cphoneActiveConversationIndex];
                 if (!conversation.messages) conversation.messages = [];
                 conversation.messages.push(transferMessage);
+                
+                // [新增] 添加隐藏的系统通知到主历史记录，告知AI这是用户操作的
+                mainChar.history.push({
+                    role: 'system',
+                    content: `[系统通知：用户操作你的手机，向NPC（${receiverName}）转账了 ${transferAmount} 元。这并非你本人的操作。]`,
+                    timestamp: Date.now(),
+                    isHidden: true
+                });
+
                 await db.chats.put(mainChar);
                 
                 const tempChatObjectForRendering = conversation.type === 'group' ? {
